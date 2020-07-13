@@ -1,0 +1,61 @@
+{
+        "name": "cobol-js",
+        "description": "COBOL compiler for CAM written in Node.js",
+        "version": "1.0.0",
+        "author": "Nguyen, Giang (G. Yakiro)",
+        "bin": {
+                "cbljs": "./bin/run"
+        },
+        "bugs": "https://github.com/yakiro-nvg/cam/issues",
+        "dependencies": {
+                "@oclif/command": "^1.7.0",
+                "@oclif/config": "^1.16.0",
+                "@oclif/plugin-help": "^3.1.0",
+                "tslib": "^1.13.0"
+        },
+        "devDependencies": {
+                "@oclif/dev-cli": "^1.22.2",
+                "@oclif/test": "^1.2.6",
+                "@types/chai": "^4.2.11",
+                "@types/mocha": "^5.2.7",
+                "@types/node": "^10.17.27",
+                "chai": "^4.2.0",
+                "eslint": "^5.16.0",
+                "eslint-config-oclif": "^3.1.0",
+                "eslint-config-oclif-typescript": "^0.1.0",
+                "globby": "^10.0.2",
+                "mocha": "^5.2.0",
+                "nyc": "^14.1.1",
+                "rimraf": "^3.0.2",
+                "ts-node": "^8.10.2",
+                "typescript": "^3.9.6"
+        },
+        "engines": {
+                "node": ">=8.0.0"
+        },
+        "files": [
+                "/bin",
+                "/lib",
+                "/types",
+                "/npm-shrinkwrap.json"
+        ],
+        "homepage": "https://github.com/yakiro-nvg/cobol.js",
+        "keywords": [
+                "COBOL"
+        ],
+        "license": "BSD-2-Clause",
+        "main": "lib/index.js",
+        "oclif": {
+                "commands": "./lib/commands",
+                "bin": "cbljs",
+                "plugins": [
+                        "@oclif/plugin-help"
+                ]
+        },
+        "repository": "yakiro-nvg/cobol.js",
+        "scripts": {
+                "posttest": "eslint . --ext .ts --config .eslintrc",
+                "test": "nyc --extension .ts mocha --forbid-only \"test/**/*.test.ts\""
+        },
+        "types": "lib/index.d.ts"
+}
