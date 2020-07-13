@@ -43,9 +43,15 @@ export default class Compile extends Command {
 
         async run(): Promise<void> {
                 const { args, flags } = this.parse(Compile)
+
                 const input  = args.input
+                if (!existsSync(input) || !lstatSync(input).isFile()) {
+                        this.error(`Can't open file: ${input}`)
+                }
+
                 const output = flags.output ? outputFromOutput(input, flags.output)
                                             : outputFromInput(input)
+
                 this.log(`compile ${input}`)
                 // TODO: compile logic
                 this.log(`     -> ${output}`)
