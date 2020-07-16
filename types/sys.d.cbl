@@ -1,32 +1,46 @@
-      * Type declarations for system `Sys` module.
-       export-module. Sys.
+       module Sys
 
-      * Formats primitives value as string.
-       program-id. To-String.
-      *    Match a Comp-2.
-           data division.
-               linkage section.
-      *        A value to format.
-               01 Val Comp-2.
-      *        Formatted string.
-               01 Str pic X(n).
-           procedure division using Val returning Str.
+      * Formats a value as string
+       program-id Format export
+      *    Match a Comp-2
+           data division
+               linkage section
+      *        A value to format
+               01 Val Comp-2
+      *        Format pattern to use
+               01 Fmt Display
+      *        Formatted string
+               01 Str Display
+           procedure division using Val, Fmt returning Str;
 
-      *    Match a Comp-4.
-           data division.
-               linkage section.
-      *        A value to format.
-               01 Val pic S9(n)V9(n) Comp-4.
-      *        Formatted string.
-               01 Str pic X(n).
-           procedure division using Val returning Str.
-       end program To-String.
+      *    Match a Comp-4
+           data division
+               linkage section
+      *        A value to format
+               01 Val Comp-4
+      *        Format pattern to use
+               01 Fmt Display
+      *        Formatted string
+               01 Str Display
+           procedure division using Val, Fmt returning Str;
 
-      * Prints a string to output terminal, used by `DISPLAY`.
-       program-id. Console-Display.
-           data division.
-               linkage section.
-      *        A string to print-out.
-               01 Msg pic X(n).
-           procedure division using Msg.
-       end program Console-Display.
+      *    Match a Display
+           data division
+               linkage section
+      *        A value to format
+               01 Val Display
+      *        Format pattern to use
+               01 Fmt Display
+      *        Formatted string
+               01 Str Display
+           procedure division using Val, Fmt returning Str
+       end
+
+      * Prints a string to terminal, used by `DISPLAY`
+       program-id Console-Display export
+           data division
+               linkage section
+      *        A string to print-out
+               01 Msg Display
+           procedure division using Msg
+       end

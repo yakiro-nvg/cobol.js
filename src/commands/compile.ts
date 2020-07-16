@@ -17,7 +17,7 @@ function outputFromOutput(input: string, output: string): string
 }
 
 export default class Compile extends Command {
-        static description = 'Compile a COBOL source file'
+        static description = 'compile a COBOL source file'
 
         static examples = [
                 '$ cbljs compile main.cbl',
@@ -30,7 +30,12 @@ export default class Compile extends Command {
                 output: flags.string({
                         char: 'o',
                         description: 'where to place the compiled byte code'
-                })
+                }),
+                freeFormat: flags.boolean({
+                        char: 'f',
+                        description: 'free format COBOL?',
+                        default: false
+                }),
         }
 
         static args = [

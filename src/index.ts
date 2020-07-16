@@ -1,1 +1,5 @@
 export { run } from '@oclif/command'
+export * as ast from './grammars/core.ast'
+export * from './errors'
+export * from './compiler'
+export * from './parser'
