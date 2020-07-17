@@ -1,7 +1,6 @@
 import { ParserComponent } from '../parser'
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import * as ast from './core.ast'
 
 function readGrammar(name: string): string
 {
@@ -15,5 +14,4 @@ export class CoreComponent implements ParserComponent
         grammar    = readGrammar('gcore.pegjs')
         keywords   = readGrammar('gcore.keywords.pegjs')
         statements = readGrammar('gcore.statements.pegjs')
-        ast        = ast
 }

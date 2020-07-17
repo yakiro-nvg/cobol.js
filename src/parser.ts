@@ -4,7 +4,6 @@ import { resolve } from 'path'
 import { ParserError } from './errors'
 import * as ast from './grammars/core.ast'
 import * as pegjs from 'pegjs'
-import * as R from 'ramda'
 
 // remove comment and line numbers
 function preprocess(content: string, freeFormat: boolean): string
@@ -31,7 +30,6 @@ export interface ParserComponent
         readonly grammar: string
         readonly keywords: string
         readonly statements: string
-        readonly ast: any
 }
 
 export class Parser
@@ -64,9 +62,6 @@ export class Parser
                                 Keyword ${keywords}
                                 Statement 'statement' ${statements}
                         `)
-                        this._ast = R.zipObj(
-                                this._components.map(x => x.name),
-                                this._components.map(x => x.ast))
                 }
 
                 const content = preprocess(buf.toString('utf8'), this._freeFormat)

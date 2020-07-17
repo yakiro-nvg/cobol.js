@@ -1,189 +1,166 @@
-export class Node
+export interface Node
 {
         readonly type: string
 
-        constructor(type: string)
+        children: Node[]
+}
+
+export abstract class Visitor
+{
+        genericVisit(node: Node): void
         {
-                this.type = type
+                // nop
         }
 }
 
-export class Module extends Node
+export function visit(node: Node, visitor: Visitor)
 {
+        // call visit function
+        const v: any = visitor
+        const visit = v['visit' + node.type]
+        if (visit) {
+                visit(node)
+        } else {
+                visitor.genericVisit(node)
+        }
+
+        // recursive for each child
+        node.children.forEach(x => visit(x, visitor))
+}
+
+export interface Module extends Node
+{
+        readonly type: 'Module'
+
         name: string
-        programs: Program[]
-
-        constructor(name: string, programs: Program[])
-        {
-                super('Module')
-                this.name     = name
-                this.programs = programs
-        }
 }
 
-export class Program extends Node
+export interface Program extends Node
 {
+        readonly type: 'Program'
+
         name: string
         isExported: boolean
-        patterns: ProgramPattern[]
-
-        constructor(name: string, isExported: boolean, patterns: ProgramPattern[])
-        {
-                super('Program')
-                this.name       = name
-                this.isExported = isExported
-                this.patterns   = patterns
-        }
 }
 
-export class ProgramPattern extends Node
+export interface ProgramPattern extends Node
 {
-        workingStorageFields: Field[]
-        linkageFields: Field[]
+        readonly type: 'ProgramPattern'
+
         usings: string[]
         returnings: string[]
-        statements: Statement[]
-
-        constructor(
-                workingStorageFields: Field[], linkageFields: Field[],
-                usings: string[], returnings: string[], statements: Statement[])
-        {
-                super('ProgramPattern')
-                this.workingStorageFields = workingStorageFields
-                this.linkageFields        = linkageFields
-                this.usings               = usings
-                this.returnings           = returnings
-                this.statements           = statements
-        }
 }
 
-export abstract class ValueLiteral extends Node
+export interface WorkingStorageSection extends Node
+{
+        readonly type: 'WorkingStorageSection'
+
+        fields: Field[]
+}
+
+export interface LinkageSection extends Node
+{
+        readonly type: 'LinkageSection'
+
+        fields: Field[]
+}
+
+export interface ValueLiteral extends Node
 {
         // pass
 }
 
-export class NumberLiteral extends ValueLiteral
+export interface NumberLiteral extends ValueLiteral
 {
-        value: string
+        readonly type: 'NumberLiteral'
 
-        constructor(value: string)
-        {
-                super('NumberLiteral')
-                this.value = value
-        }
+        value: string
 }
 
-export class StringLiteral extends ValueLiteral
+export interface StringLiteral extends ValueLiteral
 {
-        value: string
+        readonly type: 'StringLiteral'
 
-        constructor(value: string)
-        {
-                super('StringLiteral')
-                this.value = value
-        }
+        value: string
 }
 
 export type FieldUsage = 'COMP-2' | 'COMP-4' | 'DISPLAY'
 
-export class Field extends Node
+export interface Field extends Node
 {
+        readonly type: 'Field'
+
         level: number
         name: string
-        pic: PictureSegment[]
         usage: FieldUsage
-        value?: ValueLiteral
+}
 
-        constructor(
-                level: number, name: string,  pic: PictureSegment[],
-                usage: FieldUsage, value?: ValueLiteral)
-        {
-                super('Field')
-                this.level = level
-                this.name  = name
-                this.pic   = pic
-                this.usage = usage
-                this.value = value
-        }
+export interface Picture extends Node
+{
+        readonly type: 'Picture'
+
+        segments: PictureSegment[]
 }
 
 export type PictureChar = 'S' | 'X' | '9'
 
-export class PictureSegment
+export interface PictureSegment
 {
         char: PictureChar
         size: number
-
-        constructor(char: PictureChar, size: number)
-        {
-                this.char = char
-                this.size = size
-        }
 }
 
-export abstract class Statement extends Node
+export interface Statement extends Node
 {
         // pass
 }
 
-export class ParagraphStatement extends Node
+export interface ParagraphStatement extends Node
 {
-        name: string
+        readonly type: 'ParagraphStatement'
 
-        constructor(name: string)
-        {
-                super('ParagraphStatement')
-                this.name = name
-        }
+        name: string
 }
 
-export class CallId extends Node
+export interface CallId extends Node
 {
+        readonly type: 'CallId'
+
         module?: string
         program: string
-
-        constructor(program: string, module?: string)
-        {
-                super('CallId')
-                this.module  = module
-                this.program = program
-        }
 }
 
-export type CallUsingWhat = string | StringLiteral | NumberLiteral
-
-export class CallUsing extends Node
+export interface CallUsings extends Node
 {
-        what: CallUsingWhat
+        readonly type: 'CallUsings'
+}
+
+export interface CallUsingId extends Node
+{
+        readonly type: 'CallUsingId'
+
+        name: string
         isByContent: boolean
-
-        constructor(what: CallUsingWhat, isByContent: boolean)
-        {
-                super('CallUsing')
-                this.what        = what
-                this.isByContent = isByContent
-        }
 }
 
-export class CallStatement extends Node
+export interface CallReturnings extends Node
 {
-        id: CallId
-        usings: CallUsing[]
-        returnings: string[]
-
-        constructor(id: CallId, usings: CallUsing[], returnings: string[])
-        {
-                super('CallStatement')
-                this.id         = id
-                this.usings     = usings
-                this.returnings = returnings
-        }
+        readonly type: 'CallReturnings'
 }
 
-export class GobackStatement extends Node
+export interface CallReturningId extends Node
 {
-        constructor()
-        {
-                super('GobackStatement')
-        }
+        readonly type: 'CallReturningId'
+
+        name: string
+}
+
+export interface CallStatement extends Node
+{
+        readonly type: 'CallStatement'
+}
+
+export interface GobackStatement extends Node
+{
+        readonly type: 'GobackStatement'
 }

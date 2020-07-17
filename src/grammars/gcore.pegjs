@@ -1,5 +1,5 @@
 {
-        const ast = arguments[1].ast
+        const _ = require('lodash')
 
         function extractList(list, index)
         {
@@ -42,8 +42,8 @@ CallToken           = 'call'i            !IdentifierPart
 GobackToken         = 'goback'i          !IdentifierPart
 
 Module
-        = _ ModuleToken _ id:Identifier _ programs:Programs _ {
-                return new ast.core.Module(id, programs)
+        = _ ModuleToken _ name:Identifier _ programs:Programs _ {
+                return { type: 'Module', name, children: programs }
         }
 
 Programs
@@ -52,9 +52,10 @@ Programs
         }
 
 Program
-        = ProgramIdToken _ id:Identifier _ isExport:ExportToken? _ patterns:ProgramPatterns? _ EndToken {
-                patterns = patterns ? patterns : []
-                return new ast.core.Program(id, isExport ? true : false, patterns)
+        = ProgramIdToken _ name:Identifier _ isExported:ExportToken? _ patterns:ProgramPatterns? _ EndToken {
+                patterns   = patterns   ? patterns : []
+                isExported = isExported ? true     : false
+                return { type: 'Program', name, isExported, children: patterns }
         }
 
 ProgramPatterns
@@ -64,23 +65,25 @@ ProgramPatterns
 
 ProgramPattern
         = data:DataDivision? _ procedure:ProcedureDivision? _ {
-                const usings               = procedure ? procedure.usings          : []
-                const returnings           = procedure ? procedure.returnings      : []
-                const statements           = procedure ? procedure.statements      : []
-                const workingStorageFields = data      ? data.workingStorageFields : []
-                const linkageFields        = data      ? data.linkageFields        : []
-                return new ast.core.ProgramPattern(
-                        workingStorageFields, linkageFields, usings, returnings, statements)
+                const usings     = procedure ? procedure.usings     : []
+                const returnings = procedure ? procedure.returnings : []
+                const statements = procedure ? procedure.statements : []
+                return {
+                        type: 'ProgramPattern', usings, returnings,
+                        children: _.flatten([ data, statements ])
+                }
         }
 
 DataDivision
         = DataToken _ DivisionToken _
                 workingStorage:(WorkingStorageToken _ SectionToken _ Fields _)?
                 linkage:(LinkageToken _ SectionToken _ Fields _)? {
-                return {
-                        workingStorageFields: workingStorage ? workingStorage[4] : [],
-                        linkageFields:        linkage        ? linkage[4]        : []
-                }
+                let wfields = workingStorage ? workingStorage[4] : []
+                let lfields = linkage        ? linkage[4]        : []
+                return [
+                        { type: 'WorkingStorageSection', fields: wfields },
+                        { type: 'LinkageSection',        fields: lfields }
+                ]
         }
 
 Fields
@@ -89,11 +92,20 @@ Fields
         }
 
 Field
-        = level:Level _ id:Identifier _ pic:Picture? _ usage:Usage? _ value:Value? {
-                pic   = pic   ? pic   : []
+        = level:Level _ name:Identifier _ pic:Picture? _ usage:Usage? _ value:Value? {
                 usage = usage ? usage : 'DISPLAY'
-                value = value ? value : undefined
-                return new ast.core.Field(level, id, pic, usage, value)
+
+                const children = []
+
+                if (pic) {
+                        children.push(pic)
+                }
+
+                if (value) {
+                        children.push(value)
+                }
+
+                return { type: 'Field', level, name, usage, children }
         }
 
 Level
@@ -103,7 +115,7 @@ Level
 
 Picture
         = PicToken _ head:PictureSegment tail:(_ PictureSegment)* {
-                return buildList(head, tail, 1)
+                return { type: 'Picture', segments: buildList(head, tail, 1) }
         }
 
 PictureSegment
@@ -159,10 +171,10 @@ Value
 
 ValueLiteral
         = value:NumberLiteral {
-                return new ast.core.NumberLiteral(value)
+                return { type: 'NumberLiteral', value }
         }
         / value:StringLiteral {
-                return new ast.core.StringLiteral(value)
+                return { type: 'StringLiteral', value }
         }
 
 ProcedureDivision
@@ -190,23 +202,27 @@ Statements
         }
 
 ParagraphStatement
-        = id:Identifier _ ':' {
-                return new ast.core.ParagraphStatement(id)
+        = name:Identifier _ ':' {
+                return { type: 'ParagraphStatement', name }
         }
 
 CallStatement
         = CallToken _ id:CallId _ usings:CallUsings? _ returnings:CallReturnings? {
                 usings     = usings     ? usings     : []
                 returnings = returnings ? returnings : []
-                return new ast.core.CallStatement(id, usings, returnings)
+                const children = []
+                children.push(id)
+                children.push({ type: 'CallUsings',     children: usings })
+                children.push({ type: 'CallReturnings', children: returnings })
+                return { type: 'CallStatement', children }
         }
 
 CallId
         = p1:Identifier p2:(':' Identifier)? {
                 if (p2) {
-                        return new ast.core.CallId(p2[1], p1)
+                        return { type: 'CallId', module: p1, program: p2[1] }
                 } else {
-                        return new ast.core.CallId(p1)
+                        return { type: 'CallId', program: p1 }
                 }
         }
 
@@ -225,18 +241,18 @@ CallUsingImplicit
         / CallUsingLiteral
 
 CallUsingByRef
-        = id:Identifier {
-                return new ast.core.CallUsing(id, false)
+        = name:Identifier {
+                return { type: 'CallUsingId', name, isByContent: false }
         }
 
 CallUsingByContent
-        = id:Identifier {
-                return new ast.core.CallUsing(id, true)
+        = name:Identifier {
+                return { type: 'CallUsingId', name, isByContent: false }
         }
 
 CallUsingLiteral
-        = value:ValueLiteral {
-                return new ast.core.CallUsing(value, true)
+        = literal:ValueLiteral {
+                return literal
         }
 
 CallUsingExplicitss
@@ -273,7 +289,7 @@ CallReturnings
 
 GobackStatement
         = GobackToken {
-                return new ast.core.GobackStatement()
+                return { type: 'GobackStatement' }
         }
 
 Identifier
