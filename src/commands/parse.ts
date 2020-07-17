@@ -15,7 +15,7 @@ export default class Parse extends Command {
                 freeFormat: flags.boolean({
                         char: 'f',
                         description: 'free format COBOL?',
-                        default: false
+                        default: true
                 }),
                 pretty: flags.boolean({
                         char: 'p',
