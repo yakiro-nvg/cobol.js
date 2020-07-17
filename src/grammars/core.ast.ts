@@ -1,6 +1,20 @@
+export interface NodeLocationPos
+{
+        offset: number
+        line: number
+        column: number
+}
+
+export interface NodeLocation
+{
+        start: NodeLocationPos
+        end: NodeLocationPos
+}
+
 export interface Node
 {
         readonly type: string
+        readonly location: NodeLocation
 
         children: Node[]
 }
@@ -55,41 +69,41 @@ export abstract class Transformer
         }
 }
 
+export interface Identifier extends Node
+{
+        readonly type: 'Identifier'
+
+        name: string
+}
+
 export interface Module extends Node
 {
         readonly type: 'Module'
+}
 
-        name: string
+export interface Export extends Node
+{
+        readonly type: 'Export'
 }
 
 export interface Program extends Node
 {
         readonly type: 'Program'
-
-        name: string
-        isExported: boolean
 }
 
 export interface ProgramPattern extends Node
 {
         readonly type: 'ProgramPattern'
-
-        usings: string[]
-        returnings: string[]
 }
 
 export interface WorkingStorageSection extends Node
 {
         readonly type: 'WorkingStorageSection'
-
-        fields: Field[]
 }
 
 export interface LinkageSection extends Node
 {
         readonly type: 'LinkageSection'
-
-        fields: Field[]
 }
 
 export interface ValueLiteral extends Node
@@ -111,15 +125,23 @@ export interface StringLiteral extends ValueLiteral
         value: string
 }
 
-export type FieldUsage = 'COMP-2' | 'COMP-4' | 'DISPLAY'
+export interface Level extends Node
+{
+        readonly type: 'Level'
+
+        level: number
+}
+
+export interface Usage extends Node
+{
+        readonly type: 'Usage'
+
+        usage: 'COMP-2' | 'COMP-4' | 'DISPLAY'
+}
 
 export interface Field extends Node
 {
         readonly type: 'Field'
-
-        level: number
-        name: string
-        usage: FieldUsage
 }
 
 export interface Picture extends Node
@@ -137,6 +159,16 @@ export interface PictureSegment
         size: number
 }
 
+export interface ProcedureUsings extends Node
+{
+        readonly type: 'ProcedureUsings'
+}
+
+export interface ProcedureReturnings extends Node
+{
+        readonly type: 'ProcedureReturnings'
+}
+
 export interface Statement extends Node
 {
         // pass
@@ -149,12 +181,23 @@ export interface ParagraphStatement extends Node
         name: string
 }
 
+export interface CallIdModule extends Node
+{
+        readonly type: 'CallIdModule'
+
+        name: string
+}
+
+export interface CallIdProgram extends Node
+{
+        readonly type: 'CallIdProgram'
+
+        name: string
+}
+
 export interface CallId extends Node
 {
         readonly type: 'CallId'
-
-        module?: string
-        program: string
 }
 
 export interface CallUsings extends Node
@@ -173,13 +216,6 @@ export interface CallUsingId extends Node
 export interface CallReturnings extends Node
 {
         readonly type: 'CallReturnings'
-}
-
-export interface CallReturningId extends Node
-{
-        readonly type: 'CallReturningId'
-
-        name: string
 }
 
 export interface CallStatement extends Node

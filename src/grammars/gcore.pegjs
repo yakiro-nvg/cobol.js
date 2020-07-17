@@ -1,6 +1,4 @@
 {
-        const _ = require('lodash')
-
         function extractList(list, index)
         {
                 return list.map(e => e[index])
@@ -9,6 +7,20 @@
         function buildList(head, tail, index)
         {
                 return [head].concat(extractList(tail, index))
+        }
+
+        function concatInplace(a, rhs)
+        {
+                rhs.forEach(x => a.push(x))
+        }
+
+        function makeNode(type, obj)
+        {
+                if (obj) {
+                        return { type, location: location(), ...obj }
+                } else {
+                        return { type, location: location() }
+                }
         }
 }
 
@@ -43,7 +55,7 @@ GobackToken         = 'goback'i          !IdentifierPart
 
 Module
         = _ ModuleToken _ name:Identifier _ programs:Programs _ {
-                return { type: 'Module', name, children: programs }
+                return makeNode('Module', { name, children: programs })
         }
 
 Programs
@@ -53,9 +65,17 @@ Programs
 
 Program
         = ProgramIdToken _ name:Identifier _ isExported:ExportToken? _ patterns:ProgramPatterns? _ EndToken {
-                patterns   = patterns   ? patterns : []
-                isExported = isExported ? true     : false
-                return { type: 'Program', name, isExported, children: patterns }
+                const children = [ name ]
+
+                if (isExported) {
+                        children.push(makeNode('Export'))
+                }
+
+                if (patterns) {
+                        concatInplace(children, patterns)
+                }
+
+                return makeNode('Program', { children })
         }
 
 ProgramPatterns
@@ -65,25 +85,42 @@ ProgramPatterns
 
 ProgramPattern
         = data:DataDivision? _ procedure:ProcedureDivision? _ {
-                const usings     = procedure ? procedure.usings     : []
-                const returnings = procedure ? procedure.returnings : []
-                const statements = procedure ? procedure.statements : []
-                return {
-                        type: 'ProgramPattern', usings, returnings,
-                        children: _.flatten([ data, statements ])
+                const children = []
+
+                if (data) {
+                        concatInplace(children, data)
                 }
+
+                if (procedure) {
+                        concatInplace(children, procedure)
+                }
+
+                return makeNode('ProgramPattern', { children })
         }
 
 DataDivision
-        = DataToken _ DivisionToken _
-                workingStorage:(WorkingStorageToken _ SectionToken _ Fields _)?
-                linkage:(LinkageToken _ SectionToken _ Fields _)? {
-                let wfields = workingStorage ? workingStorage[4] : []
-                let lfields = linkage        ? linkage[4]        : []
-                return [
-                        { type: 'WorkingStorageSection', fields: wfields },
-                        { type: 'LinkageSection',        fields: lfields }
-                ]
+        = DataToken _ DivisionToken _ workingStorage:WorkingStorageSection? _ linkage:LinkageSection? {
+                const data = []
+
+                if (workingStorage) {
+                        data.push(workingStorage)
+                }
+
+                if (linkage) {
+                        data.push(linkage)
+                }
+
+                return data
+        }
+
+WorkingStorageSection
+        = WorkingStorageToken _ SectionToken _ fields:Fields {
+                return makeNode('WorkingStorageSection', { children: fields })
+        }
+
+LinkageSection
+        = LinkageToken _ SectionToken _ fields:Fields {
+                return makeNode('LinkageSection', { children: fields })
         }
 
 Fields
@@ -93,29 +130,31 @@ Fields
 
 Field
         = level:Level _ name:Identifier _ pic:Picture? _ usage:Usage? _ value:Value? {
-                usage = usage ? usage : 'DISPLAY'
-
-                const children = []
+                const children = [ level, name ]
 
                 if (pic) {
                         children.push(pic)
+                }
+
+                if (usage) {
+                        children.push(usage)
                 }
 
                 if (value) {
                         children.push(value)
                 }
 
-                return { type: 'Field', level, name, usage, children }
+                return makeNode('Field', { children })
         }
 
 Level
-        = level:DecimalDigit+ {
-                return parseFloat(text())
+        = DecimalDigit+ {
+                return makeNode('Level', { level: parseFloat(text()) })
         }
 
 Picture
         = PicToken _ head:PictureSegment tail:(_ PictureSegment)* {
-                return { type: 'Picture', segments: buildList(head, tail, 1) }
+                return makeNode('Picture', { segments: buildList(head, tail, 1) })
         }
 
 PictureSegment
@@ -160,9 +199,9 @@ PictureSize
         }
 
 Usage
-        = Comp2Token   { return 'COMP-2' }
-        / Comp4Token   { return 'COMP-4' }
-        / DisplayToken { return 'DISPLAY' }
+        = Comp2Token   { return makeNode('Usage', { usage: 'COMP-2'  }) }
+        / Comp4Token   { return makeNode('Usage', { usage: 'COMP-4'  }) }
+        / DisplayToken { return makeNode('Usage', { usage: 'DISPLAY' }) }
 
 Value
         = ValueToken _ value:ValueLiteral {
@@ -171,19 +210,30 @@ Value
 
 ValueLiteral
         = value:NumberLiteral {
-                return { type: 'NumberLiteral', value }
+                return makeNode('NumberLiteral', { value })
         }
         / value:StringLiteral {
-                return { type: 'StringLiteral', value }
+                return makeNode('StringLiteral', { value })
         }
 
 ProcedureDivision
         = ProcedureToken _ DivisionToken _ usings:ProcedureUsings? _
                 returnings:ProcedureReturnings? _ statements:Statements? {
-                usings     = usings     ? usings     : []
-                returnings = returnings ? returnings : []
-                statements = statements ? statements : []
-                return { usings, returnings, statements }
+                const proc = []
+
+                if (usings) {
+                        proc.push(makeNode('ProcedureUsings', { children: usings }))
+                }
+
+                if (returnings) {
+                        proc.push(makeNode('ProcedureReturnings', { children: returnings }))
+                }
+
+                if (statements) {
+                        concatInplace(proc, statements)
+                }
+
+                return proc
         }
 
 ProcedureUsings
@@ -203,31 +253,47 @@ Statements
 
 ParagraphStatement
         = name:Identifier _ ':' {
-                return { type: 'ParagraphStatement', name }
+                return makeNode('ParagraphStatement', { name })
         }
 
 CallStatement
         = CallToken _ id:CallId _ usings:CallUsings? _ returnings:CallReturnings? {
-                usings     = usings     ? usings     : []
-                returnings = returnings ? returnings : []
-                const children = []
-                children.push(id)
-                children.push({ type: 'CallUsings',     children: usings })
-                children.push({ type: 'CallReturnings', children: returnings })
-                return { type: 'CallStatement', children }
+                const children = [ id ]
+
+                if (usings) {
+                        children.push(makeNode('CallUsings', { children: usings }))
+                }
+
+                if (returnings) {
+                        children.push(makeNode('CallReturnings', { children: returnings }))
+                }
+
+                return makeNode('CallStatement', { children })
         }
 
 CallId
         = p1:Identifier p2:(':' Identifier)? {
                 if (p2) {
-                        return { type: 'CallId', module: p1, program: p2[1] }
+                        return {
+                                type: 'CallId',
+                                children: [
+                                        makeNode('CallIdModule',  { name: p1.name }),
+                                        makeNode('CallIdProgram', { name: p2[1].name })
+                                ]
+                        }
                 } else {
-                        return { type: 'CallId', program: p1 }
+                        return {
+                                type: 'CallId',
+                                children: [
+                                        makeNode('CallIdProgram', { name: p1.name })
+                                ]
+                        }
                 }
         }
 
 CallUsings
-        = UsingToken _ byrefs:CallUsingImplicits _ explicitss:CallUsingExplicitss? {
+        = UsingToken _ byrefs:CallUsingImplicits? _ explicitss:CallUsingExplicitss? {
+                byrefs = byrefs ? byrefs : []
                 return explicitss ? explicitss.reduce((acc, x) => acc.concat(x), byrefs) : byrefs
         }
 
@@ -241,13 +307,13 @@ CallUsingImplicit
         / CallUsingLiteral
 
 CallUsingByRef
-        = name:Identifier {
-                return { type: 'CallUsingId', name, isByContent: false }
+        = id:Identifier {
+                return makeNode('CallUsingId', { name: id.name, isByContent: false })
         }
 
 CallUsingByContent
-        = name:Identifier {
-                return { type: 'CallUsingId', name, isByContent: false }
+        = id:Identifier {
+                return makeNode('CallUsingId', { name: id.name, isByContent: true })
         }
 
 CallUsingLiteral
@@ -289,7 +355,7 @@ CallReturnings
 
 GobackStatement
         = GobackToken {
-                return { type: 'GobackStatement' }
+                return makeNode('GobackStatement')
         }
 
 Identifier
@@ -297,7 +363,8 @@ Identifier
 
 IdentifierName 'identifier'
         = head:IdentifierStart tail:IdentifierPart* {
-                return (head + tail.join('')).toUpperCase()
+                const name = (head + tail.join('')).toUpperCase()
+                return makeNode('Identifier', { name })
         }
 
 IdentifierStart
