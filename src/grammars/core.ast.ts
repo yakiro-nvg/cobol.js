@@ -7,25 +7,53 @@ export interface Node
 
 export abstract class Visitor
 {
-        genericVisit(node: Node): void
+        visit(node: Node): Node | undefined
         {
-                // nop
+                // call visit function
+                const v: any = this
+                const f = v['visit' + node.type]
+                if (f) {
+                        f(node)
+                } else {
+                        if (v.genericVisit) {
+                                v.genericVisit(node)
+                        }
+                }
+
+                // recursive for each child
+                node.children.forEach(x => this.visit(x))
+
+                // result (immutable)
+                return node
         }
 }
 
-export function visit(node: Node, visitor: Visitor)
+export abstract class Transformer extends Visitor
 {
-        // call visit function
-        const v: any = visitor
-        const visit = v['visit' + node.type]
-        if (visit) {
-                visit(node)
-        } else {
-                visitor.genericVisit(node)
-        }
+        visit(node: Node): Node | undefined
+        {
+                // call visit function
+                const v: any = this
+                const f = v['visit' + node.type]
+                if (f) {
+                        node = f(node)
+                } else {
+                        if (v.genericVisit) {
+                                node = v.genericVisit(node)
+                        }
+                }
 
-        // recursive for each child
-        node.children.forEach(x => visit(x, visitor))
+                // recursive for each child
+                node.children = node.children
+                        .map(x => this.visit(x))
+                        .reduce<Node[]>((acc, x) => {
+                                if (x) { acc.push(x) }
+                                return acc
+                        }, [])
+
+                // transformed
+                return node
+        }
 }
 
 export interface Module extends Node
