@@ -27,23 +27,23 @@ export abstract class Visitor
 
 export abstract class Transformer
 {
-        visit(node: Node): Node | undefined
+        transform(node: Node): Node | undefined
         {
-                // call visit function
+                // call transform function
                 const v: any = this
-                const f = v['visit' + node.type]
+                const f = v['transform' + node.type]
                 if (f) {
                         node = f(node)
                 } else {
-                        if (v.genericVisit) {
-                                node = v.genericVisit(node)
+                        if (v.genericTransform) {
+                                node = v.genericTransform(node)
                         }
                 }
 
                 // recursive for each child
                 if (node) {
                         node.children = node.children
-                                .map(x => this.visit(x))
+                                .map(x => this.transform(x))
                                 .reduce<Node[]>((acc, x) => {
                                         // remove undefined
                                         if (x) { acc.push(x) }
