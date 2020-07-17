@@ -7,7 +7,7 @@ export interface Node
 
 export abstract class Visitor
 {
-        visit(node: Node): Node | undefined
+        visit(node: Node): void
         {
                 // call visit function
                 const v: any = this
@@ -22,13 +22,10 @@ export abstract class Visitor
 
                 // recursive for each child
                 node.children.forEach(x => this.visit(x))
-
-                // result (immutable)
-                return node
         }
 }
 
-export abstract class Transformer extends Visitor
+export abstract class Transformer
 {
         visit(node: Node): Node | undefined
         {
@@ -44,14 +41,16 @@ export abstract class Transformer extends Visitor
                 }
 
                 // recursive for each child
-                node.children = node.children
-                        .map(x => this.visit(x))
-                        .reduce<Node[]>((acc, x) => {
-                                if (x) { acc.push(x) }
-                                return acc
-                        }, [])
+                if (node) {
+                        node.children = node.children
+                                .map(x => this.visit(x))
+                                .reduce<Node[]>((acc, x) => {
+                                        // remove undefined
+                                        if (x) { acc.push(x) }
+                                        return acc
+                                }, [])
+                }
 
-                // transformed
                 return node
         }
 }
