@@ -1,6 +1,7 @@
 import { lstatSync, existsSync } from 'fs'
 import { dirname, basename, join } from 'path'
 import { Command, flags } from '@oclif/command'
+import { Compiler } from '../compiler'
 
 function outputFromInput(input: string): string
 {
@@ -34,7 +35,7 @@ export default class Compile extends Command {
                 freeFormat: flags.boolean({
                         char: 'f',
                         description: 'free format COBOL?',
-                        default: false
+                        default: true
                 }),
         }
 
@@ -57,8 +58,7 @@ export default class Compile extends Command {
                 const output = flags.output ? outputFromOutput(input, flags.output)
                                             : outputFromInput(input)
 
-                this.log(`compile ${input}`)
-                // TODO: compile logic
-                this.log(`     -> ${output}`)
+                const compiler = new Compiler(flags.freeFormat)
+                compiler.compile(input, output)
         }
 }

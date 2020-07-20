@@ -1,10 +1,125 @@
 import { CLIError } from '@oclif/errors'
+import * as ast from './grammars/core.ast'
 
 export class ParserError extends CLIError
 {
-        constructor(message: string, file: string, line: number, column: number)
+        constructor(message: string, chunkName: string, location: ast.NodeLocation)
         {
                 const code = 'CBL0001'
-                super(`${file}:${line}:${column} - ${message}\n`, { code })
+                const loc = location.start
+                super(`${chunkName}:${loc.line}:${loc.column} - ${message}\n`, { code })
+        }
+}
+
+export class CompilerPassDependencyError extends CLIError
+{
+        constructor(message: string)
+        {
+                const code = 'CBL0002'
+                super(message, { code })
+        }
+}
+
+export class RedefinitionError extends CLIError
+{
+        constructor(
+                nodeChunkName: string, prevChunkName: string, name: string,
+                nodeLocation: ast.NodeLocation, prevLocation: ast.NodeLocation)
+        {
+                const code = 'CBL0003'
+                super(`
+${nodeChunkName}:${nodeLocation.start.line}:${nodeLocation.start.column} - redefinition of '${name}'
+${prevChunkName}:${prevLocation.start.line}:${prevLocation.start.column} - previous definition is here
+                `, { code })
+        }
+}
+
+export class UndefinedError extends CLIError
+{
+        constructor(chunkName: string, name: string, location: ast.NodeLocation)
+        {
+                const code = 'CBL0004'
+                const loc = location.start
+                super(`${chunkName}:${loc.line}:${loc.column} - undefined '${name}`, { code })
+        }
+}
+
+export class BadLevelError extends CLIError
+{
+        constructor(chunkName: string, location: ast.NodeLocation)
+        {
+                const code = 'CBL0005'
+                const loc = location.start
+                super(`${chunkName}:${loc.line}:${loc.column} - bad level`, { code })
+        }
+}
+
+export class Comp2WithPictureError extends CLIError
+{
+        constructor(chunkName: string, location: ast.NodeLocation)
+        {
+                const code = 'CBL0006'
+                const loc = location.start
+                super(`${chunkName}:${loc.line}:${loc.column} - COMP-2 can't have PIC clause`, { code })
+        }
+}
+
+export class BadDefaultValueError extends CLIError
+{
+        constructor(chunkName: string, location: ast.NodeLocation)
+        {
+                const code = 'CBL0007'
+                const loc = location.start
+                super(`${chunkName}:${loc.line}:${loc.column} - bad default value`, { code })
+        }
+}
+
+export class ManyVirtualDecimalPointError extends CLIError
+{
+        constructor(chunkName: string, location: ast.NodeLocation)
+        {
+                const code = 'CBL0008'
+                const loc = location.start
+                super(`${chunkName}:${loc.line}:${loc.column} - V may only occur once in PIC`, { code })
+        }
+}
+
+export class IncompatibleComp4PictureError extends CLIError
+{
+        constructor(chunkName: string, location: ast.NodeLocation)
+        {
+                const code = 'CBL0009'
+                const loc = location.start
+                super(`${chunkName}:${loc.line}:${loc.column} - incompatible COMP-4 PIC`, { code })
+        }
+}
+
+export class BadSignPictureError extends CLIError
+{
+        constructor(chunkName: string, location: ast.NodeLocation)
+        {
+                const code = 'CBL0010'
+                const loc = location.start
+                super(`${chunkName}:${loc.line}:${loc.column} - bad 'S' in PIC`, { code })
+        }
+}
+
+export class NotInLinkageSectionError extends CLIError
+{
+        constructor(chunkName: string, name: string, location: ast.NodeLocation)
+        {
+                const code = 'CBL0011'
+                const loc = location.start
+                super(`${chunkName}:${loc.line}:${loc.column} - '${name}' isn't in linkage section`, { code })
+        }
+}
+
+export class ExceedComp4PrecisionError extends CLIError
+{
+        constructor(chunkName: string, location: ast.NodeLocation)
+        {
+                const code = 'CBL0012'
+                const loc = location.start
+                super(`${chunkName}:${loc.line}:${loc.column} - max COMP-4 precision is 18`, { code })
         }
 }

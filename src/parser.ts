@@ -1,7 +1,8 @@
-import { CoreComponent } from './grammars/core'
+import { CoreParserComponent } from './grammars/core'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import { ParserError } from './errors'
+import * as _ from 'lodash'
 import * as ast from './grammars/core.ast'
 import * as pegjs from 'pegjs'
 
@@ -30,6 +31,7 @@ export interface ParserComponent
         readonly grammar: string
         readonly keywords: string
         readonly statements: string
+        readonly ast: any
 }
 
 export class Parser
@@ -41,7 +43,7 @@ export class Parser
 
         constructor(freeFormat: boolean)
         {
-                this._components = [ new CoreComponent() ]
+                this._components = [ new CoreParserComponent() ]
                 this._freeFormat = freeFormat
         }
 
@@ -62,6 +64,9 @@ export class Parser
                                 Keyword ${keywords}
                                 Statement 'statement' ${statements}
                         `)
+                        this._ast = _.zipObject(
+                                this._components.map(x => x.name),
+                                this._components.map(x => x.ast))
                 }
 
                 const content = preprocess(buf.toString('utf8'), this._freeFormat)
@@ -72,8 +77,7 @@ export class Parser
                         return root as ast.Module
                 } catch(e) {
                         const pe = e as pegjs.PegjsError
-                        const loc = pe.location.start
-                        throw new ParserError(pe.message, name, loc.line, loc.column)
+                        throw new ParserError(pe.message, name, pe.location)
                 }
         }
 

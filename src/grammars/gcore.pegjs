@@ -1,4 +1,6 @@
 {
+        const ast = arguments[1].ast
+
         function extractList(list, index)
         {
                 return list.map(e => e[index])
@@ -12,15 +14,6 @@
         function concatInplace(a, rhs)
         {
                 rhs.forEach(x => a.push(x))
-        }
-
-        function makeNode(type, obj)
-        {
-                if (obj) {
-                        return { type, location: location(), ...obj }
-                } else {
-                        return { type, location: location() }
-                }
         }
 }
 
@@ -55,7 +48,10 @@ GobackToken         = 'goback'i          !IdentifierPart
 
 Module
         = _ ModuleToken _ name:Identifier _ programs:Programs _ {
-                return makeNode('Module', { name, children: programs })
+                const m = new ast.core.Module(location())
+                m.children.push(name)
+                concatInplace(m.children, programs)
+                return m
         }
 
 Programs
@@ -68,14 +64,16 @@ Program
                 const children = [ name ]
 
                 if (isExported) {
-                        children.push(makeNode('Export'))
+                        children.push(new ast.core.Export(location()))
                 }
 
                 if (patterns) {
                         concatInplace(children, patterns)
                 }
 
-                return makeNode('Program', { children })
+                const p = new ast.core.Program(location())
+                p.children = children
+                return p
         }
 
 ProgramPatterns
@@ -92,10 +90,12 @@ ProgramPattern
                 }
 
                 if (procedure) {
-                        concatInplace(children, procedure)
+                        children.push(procedure)
                 }
 
-                return makeNode('ProgramPattern', { children })
+                const p = new ast.core.ProgramPattern(location())
+                p.children = children
+                return p
         }
 
 DataDivision
@@ -115,12 +115,16 @@ DataDivision
 
 WorkingStorageSection
         = WorkingStorageToken _ SectionToken _ fields:Fields {
-                return makeNode('WorkingStorageSection', { children: fields })
+                const w = new ast.core.WorkingStorageSection(location())
+                w.children = fields
+                return w
         }
 
 LinkageSection
         = LinkageToken _ SectionToken _ fields:Fields {
-                return makeNode('LinkageSection', { children: fields })
+                const l = new ast.core.LinkageSection(location())
+                l.children = fields
+                return l
         }
 
 Fields
@@ -144,17 +148,19 @@ Field
                         children.push(value)
                 }
 
-                return makeNode('Field', { children })
+                const f = new ast.core.Field(location())
+                f.children = children
+                return f
         }
 
 Level
         = DecimalDigit+ {
-                return makeNode('Level', { level: parseFloat(text()) })
+                return new ast.core.Level(location(), parseFloat(text()))
         }
 
 Picture
-        = PicToken _ head:PictureSegment tail:(_ PictureSegment)* {
-                return makeNode('Picture', { segments: buildList(head, tail, 1) })
+        = PicToken _ segments:PictureSegment+ {
+                return new ast.core.Picture(location(), segments)
         }
 
 PictureSegment
@@ -167,18 +173,31 @@ PictureSegment
         / chars:PictureCharXs {
                 return { char: 'X', size: chars.length }
         }
+        / chars:PictureCharAs {
+                return { char: 'A', size: chars.length }
+        }
         / chars:PictureChar9s {
                 return { char: '9', size: chars.length }
+        }
+        / 'V'i {
+                return { char: 'V', size: 1            }
         }
 
 PictureCharSs
         = head:PictureCharS tail:(_ PictureCharS)* {
                 return buildList(head, tail, 1)
         }
+
 PictureCharXs
         = head:PictureCharX tail:(_ PictureCharX)* {
                 return buildList(head, tail, 1)
         }
+
+PictureCharAs
+        = head:PictureCharA tail:(_ PictureCharA)* {
+                return buildList(head, tail, 1)
+        }
+
 PictureChar9s
         = head:PictureChar9 tail:(_ PictureChar9)* {
                 return buildList(head, tail, 1)
@@ -186,12 +205,15 @@ PictureChar9s
 
 PictureCharS = !'S('i 'S'i { return 'S' }
 PictureCharX = !'X('i 'X'i { return 'X' }
+PictureCharA = !'A('i 'A'i { return 'A' }
 PictureChar9 = !'9('  '9'  { return '9' }
 
 PictureChar
         = 'S'i { return 'S' }
         / 'X'i { return 'X' }
+        / 'A'i { return 'A' }
         / '9'  { return '9' }
+        / 'V'i { return 'V' }
 
 PictureSize
         = DecimalIntegerLiteral {
@@ -199,9 +221,9 @@ PictureSize
         }
 
 Usage
-        = Comp2Token   { return makeNode('Usage', { usage: 'COMP-2'  }) }
-        / Comp4Token   { return makeNode('Usage', { usage: 'COMP-4'  }) }
-        / DisplayToken { return makeNode('Usage', { usage: 'DISPLAY' }) }
+        = Comp2Token   { return new ast.core.Usage(location(), 'COMP-2')  }
+        / Comp4Token   { return new ast.core.Usage(location(), 'COMP-4')  }
+        / DisplayToken { return new ast.core.Usage(location(), 'DISPLAY') }
 
 Value
         = ValueToken _ value:ValueLiteral {
@@ -210,30 +232,36 @@ Value
 
 ValueLiteral
         = value:NumberLiteral {
-                return makeNode('NumberLiteral', { value })
+                return new ast.core.NumberLiteral(location(), value)
         }
         / value:StringLiteral {
-                return makeNode('StringLiteral', { value })
+                return new ast.core.StringLiteral(location(), value)
         }
 
 ProcedureDivision
         = ProcedureToken _ DivisionToken _ usings:ProcedureUsings? _
                 returnings:ProcedureReturnings? _ statements:Statements? {
-                const proc = []
+                const children = []
 
                 if (usings) {
-                        proc.push(makeNode('ProcedureUsings', { children: usings }))
+                        const n = new ast.core.ProcedureUsings(location())
+                        n.children = usings
+                        children.push(n)
                 }
 
                 if (returnings) {
-                        proc.push(makeNode('ProcedureReturnings', { children: returnings }))
+                        const n = new ast.core.ProcedureReturnings(location())
+                        n.children = returnings
+                        children.push(n)
                 }
 
                 if (statements) {
-                        concatInplace(proc, statements)
+                        concatInplace(children, statements)
                 }
 
-                return proc
+                const p = new ast.core.ProcedureDivision(location())
+                p.children = children
+                return p
         }
 
 ProcedureUsings
@@ -253,7 +281,7 @@ Statements
 
 ParagraphStatement
         = name:Identifier _ ':' {
-                return makeNode('ParagraphStatement', { name })
+                return new ast.core.ParagraphStatement(location(), name)
         }
 
 CallStatement
@@ -261,34 +289,34 @@ CallStatement
                 const children = [ id ]
 
                 if (usings) {
-                        children.push(makeNode('CallUsings', { children: usings }))
+                        const n = new ast.core.CallUsings(location())
+                        n.children = usings
+                        children.push(n)
                 }
 
                 if (returnings) {
-                        children.push(makeNode('CallReturnings', { children: returnings }))
+                        const n = new ast.core.CallReturnings(location())
+                        n.children = returnings
+                        children.push(n)
                 }
 
-                return makeNode('CallStatement', { children })
+                const c = new ast.core.CallStatement(location())
+                c.children = children
+                return c
         }
 
 CallId
         = p1:Identifier p2:(':' Identifier)? {
+                const cid = new ast.core.CallId(location())
+
                 if (p2) {
-                        return {
-                                type: 'CallId',
-                                children: [
-                                        makeNode('CallIdModule',  { name: p1.name }),
-                                        makeNode('CallIdProgram', { name: p2[1].name })
-                                ]
-                        }
+                        cid.children.push(new ast.core.CallIdModule(p1.name))
+                        cid.children.push(new ast.core.CallIdProgram(p2[1].name))
                 } else {
-                        return {
-                                type: 'CallId',
-                                children: [
-                                        makeNode('CallIdProgram', { name: p1.name })
-                                ]
-                        }
+                        cid.children.push(new ast.core.CallIdProgram(p1.name))
                 }
+
+                return cid
         }
 
 CallUsings
@@ -308,12 +336,12 @@ CallUsingImplicit
 
 CallUsingByRef
         = id:Identifier {
-                return makeNode('CallUsingId', { name: id.name, isByContent: false })
+                return new ast.core.CallUsingId(location(), id.name, false)
         }
 
 CallUsingByContent
         = id:Identifier {
-                return makeNode('CallUsingId', { name: id.name, isByContent: true })
+                return new ast.core.CallUsingId(location(), id.name, true)
         }
 
 CallUsingLiteral
@@ -355,7 +383,7 @@ CallReturnings
 
 GobackStatement
         = GobackToken {
-                return makeNode('GobackStatement')
+                return new ast.core.GobackStatement(location())
         }
 
 Identifier
@@ -364,7 +392,7 @@ Identifier
 IdentifierName 'identifier'
         = head:IdentifierStart tail:IdentifierPart* {
                 const name = (head + tail.join('')).toUpperCase()
-                return makeNode('Identifier', { name })
+                return new ast.core.Identifier(location(), name)
         }
 
 IdentifierStart
@@ -431,7 +459,7 @@ Pc = [\u005F\u203F-\u2040\u2054\uFE33-\uFE34\uFE4D-\uFE4F\uFF3F]
 // separator, space
 Zs = [\u0020\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]
 
-NumberLiteral
+NumberLiteral 'number'
         = DecimalIntegerLiteral '.' DecimalDigit* ExponentPart? {
                 return text()
         }
@@ -445,6 +473,7 @@ NumberLiteral
 DecimalIntegerLiteral
         = '0'
         / NonZeroDigit DecimalDigit*
+        / SignedInteger
 
 DecimalDigit
         = [0-9]

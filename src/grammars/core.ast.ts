@@ -11,12 +11,30 @@ export interface NodeLocation
         end: NodeLocationPos
 }
 
-export interface Node
+export abstract class Node
 {
-        readonly type: string
+        readonly kind: string
         readonly location: NodeLocation
+        children = <Node[]> []
 
-        children: Node[]
+        constructor(kind: string, location: NodeLocation)
+        {
+                this.kind     = kind
+                this.location = location
+        }
+
+        first<T extends Node>(type: { new (...args: any[]): T }): T | undefined
+        {
+                return <T> this.children.find(x => x instanceof type)
+        }
+
+        where<T extends Node>(type: { new (...args: any[]): T }): T[]
+        {
+                return this.children.reduce((acc, x) => {
+                        if (x instanceof type) { acc.push(<T> x) }
+                        return acc
+                }, <T[]> [])
+        }
 }
 
 export abstract class Visitor
@@ -25,17 +43,28 @@ export abstract class Visitor
         {
                 // call visit function
                 const v: any = this
-                const f = v['visit' + node.type]
+                const f = v['visit' + node.kind]
                 if (f) {
-                        f(node)
+                        f.bind(this)(node)
                 } else {
-                        if (v.genericVisit) {
-                                v.genericVisit(node)
-                        }
+                        this.genericVisit(node)
                 }
 
                 // recursive for each child
                 node.children.forEach(x => this.visit(x))
+
+                // touched everything
+                this.cleanup()
+        }
+
+        genericVisit(node: Node): void
+        {
+                // nop
+        }
+
+        cleanup(): void
+        {
+                // nop
         }
 }
 
@@ -43,20 +72,20 @@ export abstract class Transformer
 {
         transform(node: Node): Node | undefined
         {
+                let ret: Node | undefined = node
+
                 // call transform function
                 const v: any = this
-                const f = v['transform' + node.type]
+                const f = v['transform' + node.kind]
                 if (f) {
-                        node = f(node)
+                        ret = f.bind(this)(node)
                 } else {
-                        if (v.genericTransform) {
-                                node = v.genericTransform(node)
-                        }
+                        ret = this.genericTransform(node)
                 }
 
                 // recursive for each child
-                if (node) {
-                        node.children = node.children
+                if (ret) {
+                        ret.children = ret.children
                                 .map(x => this.transform(x))
                                 .reduce<Node[]>((acc, x) => {
                                         // remove undefined
@@ -65,93 +94,156 @@ export abstract class Transformer
                                 }, [])
                 }
 
+                // touched everything
+                this.cleanup()
+
+                return ret
+        }
+
+        genericTransform(node: Node): Node | undefined
+        {
                 return node
+        }
+
+        cleanup(): void
+        {
+                // nop
         }
 }
 
-export interface Identifier extends Node
+export class Identifier extends Node
 {
-        readonly type: 'Identifier'
-
         name: string
+
+        constructor(location: NodeLocation, name: string)
+        {
+                super('Identifier', location)
+                this.name = name
+        }
 }
 
-export interface Module extends Node
+export class Module extends Node
 {
-        readonly type: 'Module'
+        constructor(location: NodeLocation)
+        {
+                super('Module', location)
+        }
 }
 
-export interface Export extends Node
+export class Export extends Node
 {
-        readonly type: 'Export'
+        constructor(location: NodeLocation)
+        {
+                super('Export', location)
+        }
 }
 
-export interface Program extends Node
+export class Program extends Node
 {
-        readonly type: 'Program'
+        constructor(location: NodeLocation)
+        {
+                super('Program', location)
+        }
 }
 
-export interface ProgramPattern extends Node
+export class ProgramPattern extends Node
 {
-        readonly type: 'ProgramPattern'
+        constructor(location: NodeLocation)
+        {
+                super('ProgramPattern', location)
+        }
 }
 
-export interface WorkingStorageSection extends Node
+export class WorkingStorageSection extends Node
 {
-        readonly type: 'WorkingStorageSection'
+        constructor(location: NodeLocation)
+        {
+                super('WorkingStorageSection', location)
+        }
 }
 
-export interface LinkageSection extends Node
+export class LinkageSection extends Node
 {
-        readonly type: 'LinkageSection'
+        constructor(location: NodeLocation)
+        {
+                super('LinkageSection', location)
+        }
 }
 
-export interface ValueLiteral extends Node
+export class ValueLiteral extends Node
 {
-        // pass
+        constructor(kind: string, location: NodeLocation)
+        {
+                super(kind, location)
+        }
 }
 
-export interface NumberLiteral extends ValueLiteral
+export class NumberLiteral extends ValueLiteral
 {
-        readonly type: 'NumberLiteral'
-
         value: string
+
+        constructor(location: NodeLocation, value: string)
+        {
+                super('NumberLiteral', location)
+                this.value = value
+        }
 }
 
-export interface StringLiteral extends ValueLiteral
+export class StringLiteral extends ValueLiteral
 {
-        readonly type: 'StringLiteral'
-
         value: string
+
+        constructor(location: NodeLocation, value: string)
+        {
+                super('StringLiteral', location)
+                this.value = value
+        }
 }
 
-export interface Level extends Node
+export class Level extends Node
 {
-        readonly type: 'Level'
-
         level: number
+
+        constructor(location: NodeLocation, level: number)
+        {
+                super('Level', location)
+                this.level = level
+        }
 }
 
-export interface Usage extends Node
-{
-        readonly type: 'Usage'
+export type UsageType = 'COMP-2' | 'COMP-4' | 'DISPLAY'
 
-        usage: 'COMP-2' | 'COMP-4' | 'DISPLAY'
+export class Usage extends Node
+{
+        usage: UsageType
+
+        constructor(location: NodeLocation, usage: UsageType)
+        {
+                super('Usage', location)
+                this.usage = usage
+        }
 }
 
-export interface Field extends Node
+export class Field extends Node
 {
-        readonly type: 'Field'
+        constructor(location: NodeLocation)
+        {
+                super('Field', location)
+        }
 }
 
-export interface Picture extends Node
+export class Picture extends Node
 {
-        readonly type: 'Picture'
-
         segments: PictureSegment[]
+
+        constructor(location: NodeLocation, segments: PictureSegment[])
+        {
+                super('Picture', location)
+                this.segments = segments
+        }
 }
 
-export type PictureChar = 'S' | 'X' | '9'
+export type PictureChar = 'S' | 'X' | 'A' | '9' | 'V'
 
 export interface PictureSegment
 {
@@ -159,71 +251,120 @@ export interface PictureSegment
         size: number
 }
 
-export interface ProcedureUsings extends Node
+export class ProcedureUsings extends Node
 {
-        readonly type: 'ProcedureUsings'
+        constructor(location: NodeLocation)
+        {
+                super('ProcedureUsings', location)
+        }
 }
 
-export interface ProcedureReturnings extends Node
+export class ProcedureReturnings extends Node
 {
-        readonly type: 'ProcedureReturnings'
+        constructor(location: NodeLocation)
+        {
+                super('ProcedureReturnings', location)
+        }
 }
 
-export interface Statement extends Node
+export class ProcedureDivision extends Node
 {
-        // pass
+        constructor(location: NodeLocation)
+        {
+                super('ProcedureDivision', location)
+        }
 }
 
-export interface ParagraphStatement extends Node
+export class Statement extends Node
 {
-        readonly type: 'ParagraphStatement'
+        constructor(kind: string, location: NodeLocation)
+        {
+                super(kind, location)
+        }
+}
 
+export class ParagraphStatement extends Statement
+{
         name: string
+
+        constructor(location: NodeLocation, name: string)
+        {
+                super('ParagraphStatement', location)
+                this.name = name
+        }
 }
 
-export interface CallIdModule extends Node
+export class CallIdModule extends Node
 {
-        readonly type: 'CallIdModule'
-
         name: string
+
+        constructor(location: NodeLocation, name: string)
+        {
+                super('CallIdModule', location)
+                this.name = name
+        }
 }
 
-export interface CallIdProgram extends Node
+export class CallIdProgram extends Node
 {
-        readonly type: 'CallIdProgram'
-
         name: string
+
+        constructor(location: NodeLocation, name: string)
+        {
+                super('CallIdProgram', location)
+                this.name = name
+        }
 }
 
-export interface CallId extends Node
+export class CallId extends Node
 {
-        readonly type: 'CallId'
+        constructor(location: NodeLocation)
+        {
+                super('CallId', location)
+        }
 }
 
-export interface CallUsings extends Node
+export class CallUsings extends Node
 {
-        readonly type: 'CallUsings'
+        constructor(location: NodeLocation)
+        {
+                super('CallUsings', location)
+        }
 }
 
-export interface CallUsingId extends Node
+export class CallUsingId extends Node
 {
-        readonly type: 'CallUsingId'
-
         name: string
         isByContent: boolean
+
+        constructor(location: NodeLocation, name: string, isByContent: boolean)
+        {
+                super('CallUsingId', location)
+                this.name        = name
+                this.isByContent = isByContent
+        }
 }
 
-export interface CallReturnings extends Node
+export class CallReturnings extends Node
 {
-        readonly type: 'CallReturnings'
+        constructor(location: NodeLocation)
+        {
+                super('CallReturnings', location)
+        }
 }
 
-export interface CallStatement extends Node
+export class CallStatement extends Statement
 {
-        readonly type: 'CallStatement'
+        constructor(location: NodeLocation)
+        {
+                super('CallStatement', location)
+        }
 }
 
-export interface GobackStatement extends Node
+export class GobackStatement extends Statement
 {
-        readonly type: 'GobackStatement'
+        constructor(location: NodeLocation)
+        {
+                super('GobackStatement', location)
+        }
 }
