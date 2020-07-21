@@ -1,6 +1,6 @@
 import { Compiler, CompilerPass } from '../compiler'
 import { ModuleSymbol, ChunkSymbol, ProgramSymbol,
-        ProgramPatternSymbol, FieldSymbol, Comp4FieldSymbol } from '../symbols/core'
+         FieldSymbol, Comp4FieldSymbol } from '../symbols/core'
 import { Assembler, Comp4, Opcode } from 'cam-js'
 import { assert } from 'console'
 import { differenceBy } from 'lodash'
@@ -134,8 +134,6 @@ class ByteCodeGenerationVisitor extends ast.Visitor
         private _module?: ModuleSymbol
         private _chunk?: ChunkSymbol
         private _program?: ProgramSymbol
-        private _patternIdx?: number
-        private _pattern?: ProgramPatternSymbol
         private _workingStorageFields?: WorkingStorageField[]
         private _linkageFields?: LinkageField[]
 
@@ -166,14 +164,7 @@ class ByteCodeGenerationVisitor extends ast.Visitor
                 this._asm!.prototypePush(name)
 
                 this._program = this._chunk!.resolve(name) as ProgramSymbol
-                this._patternIdx = 0
-        }
 
-        visitProgramPattern(node: ast.ProgramPattern): void
-        {
-                const loc = node.location.start
-                assert(this._patternIdx === 0, `${this._compiler.chunkName}:${loc.line}:${loc.column} - multiple patterns not supported`)
-                this._pattern = this._program!.patterns[this._patternIdx!++]
                 this._workingStorageFields = []
                 this._linkageFields = []
         }
@@ -181,7 +172,7 @@ class ByteCodeGenerationVisitor extends ast.Visitor
         visitField(node: ast.Field): void
         {
                 const name = node.first(ast.Identifier)!.name
-                const sym = this._pattern!.resolveMember(name) as FieldSymbol
+                const sym = this._program!.resolveMember(name) as FieldSymbol
                 const value = node.first(ast.ValueLiteral)
                 if (!sym.isWorking) {
                         let f: LinkageField
@@ -211,11 +202,11 @@ class ByteCodeGenerationVisitor extends ast.Visitor
 
         private genWorkingStorageFields(): void
         {
-                this._workingStorageFields = this._pattern!.node
+                this._workingStorageFields = this._program!.node
                         .first(ast.WorkingStorageSection)!
                         .where(ast.Field)
                         .map(x => x.first(ast.Identifier)!.name)
-                        .map(x => this._pattern!.resolve(x) as FieldSymbol)
+                        .map(x => this._program!.resolve(x) as FieldSymbol)
                         .map(x => {
                                 let index: number
 
@@ -262,10 +253,10 @@ class ByteCodeGenerationVisitor extends ast.Visitor
 
         private genLinkageFields(): void
         {
-                const usings = this._pattern!.usings
+                const usings = this._program!.usings
                         .map(x => this._linkageFields!.find(y => y.name === x.name)!)
 
-                const returnings = this._pattern!.returnings
+                const returnings = this._program!.returnings
                         .map(x => this._linkageFields!.find(y => y.name === x.name)!)
 
                 const locals = differenceBy(this._linkageFields!, usings.concat(returnings), x => x.name)

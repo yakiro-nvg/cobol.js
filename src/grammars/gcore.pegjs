@@ -60,15 +60,15 @@ Programs
         }
 
 Program
-        = ProgramIdToken _ name:Identifier _ isExported:ExportToken? _ patterns:ProgramPatterns? _ EndToken {
+        = ProgramIdToken _ name:Identifier _ isExported:ExportToken? _ body:ProgramBody? _ EndToken {
                 const children = [ name ]
 
                 if (isExported) {
                         children.push(new ast.core.Export(location()))
                 }
 
-                if (patterns) {
-                        concatInplace(children, patterns)
+                if (body) {
+                        concatInplace(children, body)
                 }
 
                 const p = new ast.core.Program(location())
@@ -76,12 +76,7 @@ Program
                 return p
         }
 
-ProgramPatterns
-        = head:ProgramPattern tail:(_ ';' _ ProgramPattern)* {
-                return buildList(head, tail, 3)
-        }
-
-ProgramPattern
+ProgramBody
         = data:DataDivision? _ procedure:ProcedureDivision? _ {
                 const children = []
 
@@ -93,9 +88,7 @@ ProgramPattern
                         children.push(procedure)
                 }
 
-                const p = new ast.core.ProgramPattern(location())
-                p.children = children
-                return p
+                return children
         }
 
 DataDivision

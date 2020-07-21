@@ -1,9 +1,9 @@
 import { Compiler, CompilerPass } from '../compiler'
 import { ModuleSymbol, ChunkSymbol, ProgramSymbol,
-        ProgramPatternSymbol, Comp4FieldSymbol, FieldSymbol, UsageSymbol } from '../symbols/core'
+         Comp4FieldSymbol, FieldSymbol, UsageSymbol } from '../symbols/core'
 import { RedefinitionError, UndefinedError, BadLevelError, BadSignPictureError,
-        ManyVirtualDecimalPointError, BadDefaultValueError, IncompatibleComp4PictureError,
-        Comp2WithPictureError, NotInLinkageSectionError, ExceedComp4PrecisionError } from '../errors'
+         ManyVirtualDecimalPointError, BadDefaultValueError, IncompatibleComp4PictureError,
+         Comp2WithPictureError, NotInLinkageSectionError, ExceedComp4PrecisionError } from '../errors'
 import { tail, sumBy } from 'lodash'
 import * as ast from '../grammars/core.ast'
 
@@ -13,7 +13,6 @@ class DefineDeclareSymbolVisitor extends ast.Visitor
         private _module?: ModuleSymbol
         private _chunk?: ChunkSymbol
         private _program?: ProgramSymbol
-        private _pattern?: ProgramPatternSymbol
         private _isWorking?: boolean
 
         constructor(compiler: Compiler)
@@ -40,19 +39,20 @@ class DefineDeclareSymbolVisitor extends ast.Visitor
         visitProgram(node: ast.Program): void
         {
                 const name = node.first(ast.Identifier)!.name
-                const isExported = node.first(ast.Export)
-                this._program = new ProgramSymbol(name, node)
-                if (isExported) {
-                        this._module!.define(this._program)
-                } else {
-                        this._chunk!.define(this._program)
+                const previous = this._chunk!.resolveMember(name) as ProgramSymbol
+                if (previous) {
+                        throw new RedefinitionError(
+                                this._compiler.chunkName, this._compiler.chunkName,
+                                name, node.location, previous.node.location)
                 }
-        }
 
-        visitProgramPattern(node: ast.ProgramPattern): void
-        {
-                this._pattern = new ProgramPatternSymbol(this._chunk!, node)
-                this._program!.patterns.push(this._pattern)
+                const isExported = node.first(ast.Export)
+                this._program = new ProgramSymbol(this._chunk!, name, node)
+                this._chunk!.define(this._program)
+
+                if (isExported) { // also defined in module
+                        this._module!.define(this._program)
+                }
         }
 
         visitWorkingStorageSection(node: ast.WorkingStorageSection): void
@@ -151,7 +151,7 @@ class DefineDeclareSymbolVisitor extends ast.Visitor
                         break }
                 }
 
-                const previous = this._pattern!.resolveMember(name) as FieldSymbol
+                const previous = this._program!.resolveMember(name) as FieldSymbol
                 if (previous) {
                         throw new RedefinitionError(
                                 this._compiler.chunkName, this._compiler.chunkName,
@@ -161,7 +161,7 @@ class DefineDeclareSymbolVisitor extends ast.Visitor
                                 const field = usage === 'COMP-4'
                                         ? new Comp4FieldSymbol(name, this._isWorking!, node, pic?.segments)
                                         : new FieldSymbol(name, this._isWorking!, usage, node, pic?.segments)
-                                this._pattern!.define(field)
+                                this._program!.define(field)
                         } catch(e) {
                                 if (e === 'too big') {
                                         throw new BadDefaultValueError(
@@ -177,14 +177,14 @@ class DefineDeclareSymbolVisitor extends ast.Visitor
         {
                 node.where(ast.Identifier).forEach(x => {
                         const name = x.name
-                        const field = this._pattern!.resolveMember(name) as FieldSymbol
+                        const field = this._program!.resolveMember(name) as FieldSymbol
                         if (field) {
                                 if (field.isWorking) {
                                         throw new NotInLinkageSectionError(
                                                 this._compiler.chunkName, name, x.location)
                                 }
 
-                                this._pattern!.usings.push(field)
+                                this._program!.usings.push(field)
                         } else {
                                 throw new UndefinedError(
                                         this._compiler.chunkName, name, x.location)
@@ -196,14 +196,14 @@ class DefineDeclareSymbolVisitor extends ast.Visitor
         {
                 node.where(ast.Identifier).forEach(x => {
                         const name = x.name
-                        const field = this._pattern!.resolveMember(name) as FieldSymbol
+                        const field = this._program!.resolveMember(name) as FieldSymbol
                         if (field) {
                                 if (field.isWorking) {
                                         throw new NotInLinkageSectionError(
                                                 this._compiler.chunkName, name, x.location)
                                 }
 
-                                this._pattern!.returnings.push(field)
+                                this._program!.returnings.push(field)
                         } else {
                                 throw new UndefinedError(
                                         this._compiler.chunkName, name, x.location)
@@ -233,8 +233,6 @@ class ResolveDeclareSymbolVisitor extends ast.Visitor
         private _module?: ModuleSymbol
         private _chunk?: ChunkSymbol
         private _program?: ProgramSymbol
-        private _patternIdx?: number
-        private _pattern?: ProgramPatternSymbol
 
         constructor(compiler: Compiler)
         {
@@ -254,18 +252,12 @@ class ResolveDeclareSymbolVisitor extends ast.Visitor
         {
                 const name = node.first(ast.Identifier)!.name
                 this._program = this._chunk!.resolve(name) as ProgramSymbol
-                this._patternIdx = 0
-        }
-
-        visitProgramPattern(node: ast.ProgramPattern): void
-        {
-                this._pattern = this._program!.patterns[this._patternIdx!++]
         }
 
         visitField(node: ast.Field): void
         {
                 const name = node.first(ast.Identifier)!.name
-                const field = this._pattern!.resolveMember(name) as FieldSymbol
+                const field = this._program!.resolveMember(name) as FieldSymbol
                 field.type = this._compiler.globalScope.resolveMember(field.usage) as UsageSymbol
         }
 }

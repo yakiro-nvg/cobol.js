@@ -106,19 +106,6 @@ export class ChunkSymbol extends SymbolTable implements Symbol
         }
 }
 
-export class ProgramSymbol implements Symbol
-{
-        readonly name: string
-        readonly node: ast.Program
-        readonly patterns: ProgramPatternSymbol[] = []
-
-        constructor(name: string, node: ast.Program)
-        {
-                this.name = name
-                this.node = node
-        }
-}
-
 export class DataSectionScope extends SymbolTable
 {
         constructor()
@@ -127,18 +114,20 @@ export class DataSectionScope extends SymbolTable
         }
 }
 
-export class ProgramPatternSymbol extends BaseScope
+export class ProgramSymbol extends BaseScope implements Symbol
 {
-        readonly node: ast.ProgramPattern
+        readonly name: string
+        readonly node: ast.Program
         readonly usings = <FieldSymbol[]> []
         readonly returnings = <FieldSymbol[]> []
 
         private readonly _workingStorage = new DataSectionScope()
         private readonly _linkage        = new DataSectionScope()
 
-        constructor(enclosingScope: ChunkSymbol, node: ast.ProgramPattern)
+        constructor(enclosingScope: ChunkSymbol, name: string, node: ast.Program)
         {
                 super(enclosingScope)
+                this.name = name
                 this.node = node
         }
 

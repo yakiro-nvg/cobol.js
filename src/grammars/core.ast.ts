@@ -146,14 +146,6 @@ export class Program extends Node
         }
 }
 
-export class ProgramPattern extends Node
-{
-        constructor(location: NodeLocation)
-        {
-                super('ProgramPattern', location)
-        }
-}
-
 export class WorkingStorageSection extends Node
 {
         constructor(location: NodeLocation)
