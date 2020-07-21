@@ -303,10 +303,10 @@ CallId
                 const cid = new ast.core.CallId(location())
 
                 if (p2) {
-                        cid.children.push(new ast.core.CallIdModule(p1.name))
-                        cid.children.push(new ast.core.CallIdProgram(p2[1].name))
+                        cid.children.push(new ast.core.CallIdModule(location(), p1.name))
+                        cid.children.push(new ast.core.CallIdProgram(location(), p2[1].name))
                 } else {
-                        cid.children.push(new ast.core.CallIdProgram(p1.name))
+                        cid.children.push(new ast.core.CallIdProgram(location(), p1.name))
                 }
 
                 return cid
