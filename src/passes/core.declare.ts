@@ -4,7 +4,7 @@ import { ModuleSymbol, ChunkSymbol, ProgramSymbol,
 import { RedefinitionError, UndefinedError, BadLevelError, BadSignPictureError,
          ManyVirtualDecimalPointError, BadDefaultValueError, IncompatibleComp4PictureError,
          Comp2WithPictureError, NotInLinkageSectionError, ExceedComp4PrecisionError } from '../errors'
-import { tail, sumBy } from 'lodash'
+import { tail, sumBy, groupBy, toPairs } from 'lodash'
 import * as ast from '../grammars/core.ast'
 
 class DefineDeclareSymbolVisitor extends ast.Visitor
@@ -171,6 +171,19 @@ class DefineDeclareSymbolVisitor extends ast.Visitor
                                 }
                         }
                 }
+        }
+
+        visitProcedureDivision(node: ast.ProcedureDivision): void
+        {
+                const usings = node.first(ast.ProcedureUsings)?.where(ast.Identifier) || []
+                const returnings = node.first(ast.ProcedureReturnings)?.where(ast.Identifier) || []
+                toPairs(groupBy(usings.concat(returnings), x => x.name)).forEach(x => {
+                        if (x[1].length > 1) {
+                                throw new RedefinitionError(
+                                        this._compiler.chunkName, this._compiler.chunkName, x[0],
+                                        x[1][1].location, x[1][0].location)
+                        }
+                })
         }
 
         visitProcedureUsings(node: ast.ProcedureUsings): void
