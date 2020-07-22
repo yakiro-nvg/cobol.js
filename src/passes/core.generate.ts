@@ -350,7 +350,7 @@ class ByteCodeGenerationVisitor extends ast.Visitor
                         }
                 })
 
-                // copy back usings
+                // copy-back usings
                 usings.forEach(x => {
                         if (!(x instanceof ast.CallUsingId) || x.isByContent) {
                                 return // by content doesn't need copy-back
