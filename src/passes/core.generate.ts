@@ -313,7 +313,7 @@ class ByteCodeGenerationVisitor extends ast.Visitor
                                         this._asm!.emitB(Opcode.Load, f.index)
                                 } else {
                                         const f = this._linkageFields!.find(x => x.name == using.name)!
-                                        this._asm!.emitB(Opcode.Load, f.index!)
+                                        this._asm!.emitB(Opcode.Push, f.index!)
                                 }
                         } else if (using instanceof ast.NumberLiteral) {
                                 try {
@@ -330,7 +330,6 @@ class ByteCodeGenerationVisitor extends ast.Visitor
                                         }
                                 }
                         } else if (using instanceof ast.StringLiteral) {
-                                console.log(using)
                                 const c = this._cpool!.getDisplay(using)
                                 this._asm!.emitB(Opcode.Load, c.index)
                         } else {
