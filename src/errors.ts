@@ -27,8 +27,7 @@ export class RedefinitionError extends CLIError
                 nodeLocation: ast.NodeLocation, prevLocation: ast.NodeLocation)
         {
                 const code = 'CBL0003'
-                super(`
-${nodeChunkName}:${nodeLocation.start.line}:${nodeLocation.start.column} - redefinition of '${name}'
+                super(`${nodeChunkName}:${nodeLocation.start.line}:${nodeLocation.start.column} - redefinition of '${name}'
 ${prevChunkName}:${prevLocation.start.line}:${prevLocation.start.column} - previous definition is here
                 `, { code })
         }
@@ -40,7 +39,7 @@ export class UndefinedError extends CLIError
         {
                 const code = 'CBL0004'
                 const loc = location.start
-                super(`${chunkName}:${loc.line}:${loc.column} - undefined '${name}`, { code })
+                super(`${chunkName}:${loc.line}:${loc.column} - undefined '${name}'`, { code })
         }
 }
 
@@ -123,3 +122,51 @@ export class ExceedComp4PrecisionError extends CLIError
                 super(`${chunkName}:${loc.line}:${loc.column} - max COMP-4 precision is 18`, { code })
         }
 }
+
+export class MutableArgumentRedefinitionError extends CLIError
+{
+        constructor(chunkName: string, name: string, nodeLocation: ast.NodeLocation, prevLocation: ast.NodeLocation)
+        {
+                const code = 'CBL0013'
+                super(`${chunkName}:${nodeLocation.start.line}:${nodeLocation.start.column} - redefinition of mutable argument '${name}'
+${chunkName}:${prevLocation.start.line}:${prevLocation.start.column} - previous definition is here
+                `, { code })
+        }
+}
+
+export class WrongNumArgumentsError extends CLIError
+{
+        constructor(
+                nodeChunkName: string, calleeChunkName: string,
+                nodeLocation: ast.NodeLocation, calleeLocation: ast.NodeLocation)
+        {
+                const code = 'CBL0014'
+                super(`${nodeChunkName}:${nodeLocation.start.line}:${nodeLocation.start.column} - wrong number of arguments
+${calleeChunkName}:${calleeLocation.start.line}:${calleeLocation.start.column} - callee definition is here
+                `, { code })
+        }
+}
+
+export class BadArgumentTypeError extends CLIError
+{
+        constructor(
+                nodeChunkName: string, calleeChunkName: string, expected: string, found: string,
+                nodeLocation: ast.NodeLocation, calleeLocation: ast.NodeLocation)
+        {
+                const code = 'CBL0015'
+                super(`${nodeChunkName}:${nodeLocation.start.line}:${nodeLocation.start.column} - expected '${expected}', found '${found}'
+${calleeChunkName}:${calleeLocation.start.line}:${calleeLocation.start.column} - argument definition is here
+                `, { code })
+        }
+}
+
+export class ExpressionReturnNothingError extends CLIError
+{
+        constructor(chunkName: string, name: string, location: ast.NodeLocation)
+        {
+                const code = 'CBL0016'
+                const loc = location.start
+                super(`${chunkName}:${loc.line}:${loc.column} - '${name}' returns nothing, hence it isn't an expression`, { code })
+        }
+}
+

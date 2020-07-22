@@ -31,6 +31,7 @@ export interface ParserComponent
         readonly grammar: string
         readonly keywords: string
         readonly statements: string
+        readonly expressions: string
         readonly ast: any
 }
 
@@ -59,10 +60,12 @@ export class Parser
                         const grammar    = this._components.map(x => x.grammar).join('\n')
                         const keywords   = this._components.map(x => x.keywords).join('\n')
                         const statements = this._components.map(x => x.statements).join('\n')
+                        const expressions = this._components.map(x => x.expressions).join('\n')
                         this._parser = pegjs.generate(`
                                 ${grammar}
                                 Keyword ${keywords}
                                 Statement 'statement' ${statements}
+                                Expression 'expression' ${expressions}
                         `)
                         this._ast = _.zipObject(
                                 this._components.map(x => x.name),

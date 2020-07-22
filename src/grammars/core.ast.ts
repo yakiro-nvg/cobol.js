@@ -1,3 +1,6 @@
+import { ProgramSymbol, FieldSymbol } from '../symbols/core'
+import { Type } from '../symbol'
+
 export interface NodeLocationPos
 {
         offset: number
@@ -53,11 +56,24 @@ export abstract class Visitor
                 // recursive for each child
                 node.children.forEach(x => this.visit(x))
 
+                // call visit post-order function
+                const p = v['visitPost' + node.kind]
+                if (p) {
+                        p.bind(this)(node)
+                } else {
+                        this.genericVisitPost(node)
+                }
+
                 // touched everything
                 this.cleanup()
         }
 
         genericVisit(node: Node): void
+        {
+                // nop
+        }
+
+        genericVisitPost(node: Node): void
         {
                 // nop
         }
@@ -267,6 +283,16 @@ export class ProcedureDivision extends Node
         }
 }
 
+export class Expression extends Node
+{
+        type?: Type
+
+        constructor(kind: string, location: NodeLocation)
+        {
+                super(kind, location)
+        }
+}
+
 export class Statement extends Node
 {
         constructor(kind: string, location: NodeLocation)
@@ -328,6 +354,7 @@ export class CallUsingId extends Node
 {
         name: string
         isByContent: boolean
+        symbol?: FieldSymbol
 
         constructor(location: NodeLocation, name: string, isByContent: boolean)
         {
@@ -345,11 +372,37 @@ export class CallReturnings extends Node
         }
 }
 
+export class CallReturningId extends Node
+{
+        name: string
+        symbol?: FieldSymbol
+
+        constructor(location: NodeLocation, name: string)
+        {
+                super('CallReturningId', location)
+                this.name = name
+        }
+}
+
 export class CallStatement extends Statement
 {
+        callee?: ProgramSymbol
+        usingTypes?: Type[]
+
         constructor(location: NodeLocation)
         {
                 super('CallStatement', location)
+        }
+}
+
+export class CallExpression extends Expression
+{
+        callee?: ProgramSymbol
+        usingTypes?: Type[]
+
+        constructor(location: NodeLocation)
+        {
+                super('CallExpression', location)
         }
 }
 

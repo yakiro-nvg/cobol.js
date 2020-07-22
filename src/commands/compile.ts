@@ -2,6 +2,7 @@ import { lstatSync, existsSync } from 'fs'
 import { dirname, basename, join } from 'path'
 import { Command, flags } from '@oclif/command'
 import { Compiler } from '../compiler'
+import { CLIError } from '@oclif/errors'
 
 function outputFromInput(input: string): string
 {
@@ -58,7 +59,15 @@ export default class Compile extends Command {
                 const output = flags.output ? outputFromOutput(input, flags.output)
                                             : outputFromInput(input)
 
-                const compiler = new Compiler(flags.freeFormat)
-                compiler.compile(input, output)
+                try {
+                        const compiler = new Compiler(flags.freeFormat)
+                        compiler.compile(input, output)
+                } catch(e) {
+                        if (!(e instanceof CLIError)) {
+                                console.log(e)
+                        }
+
+                        throw e
+                }
         }
 }

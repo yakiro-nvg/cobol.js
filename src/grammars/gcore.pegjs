@@ -298,15 +298,30 @@ CallStatement
                 return c
         }
 
+CallExpression
+        = CallToken _ id:CallId _ usings:CallUsings? {
+                const children = [ id ]
+
+                if (usings) {
+                        const n = new ast.core.CallUsings(location())
+                        n.children = usings
+                        children.push(n)
+                }
+
+                const c = new ast.core.CallExpression(location())
+                c.children = children
+                return c
+        }
+
 CallId
         = p1:Identifier p2:(':' Identifier)? {
                 const cid = new ast.core.CallId(location())
 
                 if (p2) {
-                        cid.children.push(new ast.core.CallIdModule(location(), p1.name))
-                        cid.children.push(new ast.core.CallIdProgram(location(), p2[1].name))
+                        cid.children.push(new ast.core.CallIdModule(p1.location, p1.name))
+                        cid.children.push(new ast.core.CallIdProgram(p2[1].location, p2[1].name))
                 } else {
-                        cid.children.push(new ast.core.CallIdProgram(location(), p1.name))
+                        cid.children.push(new ast.core.CallIdProgram(p1.location, p1.name))
                 }
 
                 return cid
@@ -326,6 +341,9 @@ CallUsingImplicits
 CallUsingImplicit
         = CallUsingByRef
         / CallUsingLiteral
+        / '(' _ exp:Expression _ ')' {
+                return exp
+        }
 
 CallUsingByRef
         = id:Identifier {
@@ -359,6 +377,9 @@ CallUsingExplicitByRefs
 CallUsingExplicitByRef
         = CallUsingByRef
         / CallUsingLiteral
+        / '(' _ exp:Expression _ ')' {
+                return exp
+        }
 
 CallUsingExplicitByContents
         = ByToken _ ContentToken _ head:CallUsingExplicitByContent tail:(_ ','? _ CallUsingExplicitByContent)* {
@@ -368,10 +389,18 @@ CallUsingExplicitByContents
 CallUsingExplicitByContent
         = CallUsingByContent
         / CallUsingLiteral
+        / '(' _ exp:Expression _ ')' {
+                return exp
+        }
 
 CallReturnings
-        = ReturningToken _ head:Identifier tail:(_ Identifier)* {
-                return buildList(head, tail, 1)
+        = ReturningToken _ head:CallReturning tail:(_ ','? _ CallReturning)* {
+                return buildList(head, tail, 3)
+        }
+
+CallReturning
+        = id:Identifier {
+                return new ast.core.CallReturningId(location(), id.name)
         }
 
 GobackStatement

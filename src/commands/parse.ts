@@ -2,6 +2,7 @@ import { lstatSync, existsSync } from 'fs'
 import { Command, flags } from '@oclif/command'
 import { Parser } from '../parser'
 import { render } from 'prettyjson'
+import { CLIError } from '@oclif/errors'
 
 export default class Parse extends Command {
         static description = 'generate Abstract Syntax Tree'
@@ -40,12 +41,20 @@ export default class Parse extends Command {
                         this.error(`Can't open file: ${input}`)
                 }
 
-                const parser = new Parser(flags.freeFormat)
-                const module = parser.parse(input)
-                if (flags.pretty) {
-                        console.log(render(module))
-                } else {
-                        console.log(JSON.stringify(module))
+                try {
+                        const parser = new Parser(flags.freeFormat)
+                        const module = parser.parse(input)
+                        if (flags.pretty) {
+                                console.log(render(module))
+                        } else {
+                                console.log(JSON.stringify(module))
+                        }
+                } catch(e) {
+                        if (!(e instanceof CLIError)) {
+                                console.log(e)
+                        }
+
+                        throw e
                 }
         }
 }

@@ -11,9 +11,10 @@ function readGrammar(name: string): string
 
 export class CoreParserComponent implements ParserComponent
 {
-        name       = 'core'
-        grammar    = readGrammar('gcore.pegjs')
-        keywords   = readGrammar('gcore.keywords.pegjs')
-        statements = readGrammar('gcore.statements.pegjs')
-        ast        = ast
+        name        = 'core'
+        grammar     = readGrammar('gcore.pegjs')
+        keywords    = readGrammar('gcore.keywords.pegjs')
+        statements  = readGrammar('gcore.statements.pegjs')
+        expressions = readGrammar('gcore.expressions.pegjs')
+        ast         = ast
 }
