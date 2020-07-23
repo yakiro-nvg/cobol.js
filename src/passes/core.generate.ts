@@ -315,7 +315,7 @@ class ByteCodeGenerationVisitor extends ast.Visitor
                 this.genLinkageFields()
         }
 
-        visitCallStatement(node: ast.CallStatement): void
+        private pushCallable(node: ast.CallStatement | ast.CallExpression): void
         {
                 const callId = node.first(ast.CallId)!
                 const callIdProgram = callId.first(ast.CallIdProgram)!
@@ -329,25 +329,19 @@ class ByteCodeGenerationVisitor extends ast.Visitor
                         const idx = this._programIndices!.get(callIdProgram.name)!
                         this._asm!.emitB(Opcode.ChunkValue, idx)
                 }
+        }
+
+        visitCallStatement(node: ast.CallStatement): void
+        {
+                this.pushCallable(node)
         }
 
         visitCallExpression(node: ast.CallExpression): void
         {
-                const callId = node.first(ast.CallId)!
-                const callIdProgram = callId.first(ast.CallIdProgram)!
-                const callIdModule = callId.first(ast.CallIdModule)
-
-                // push callable
-                if (callIdModule) {
-                        const imp = this._asm!.import(callIdModule.name, callIdProgram.name)
-                        this._asm!.emitB(Opcode.Import, imp)
-                } else {
-                        const idx = this._programIndices!.get(callIdProgram.name)!
-                        this._asm!.emitB(Opcode.ChunkValue, idx)
-                }
+                this.pushCallable(node)
         }
 
-        copyBackReturnings(returnings: ast.CallReturningId[]): void
+        private copyBackReturnings(returnings: ast.CallReturningId[]): void
         {
                 returnings.forEach(x => {
                         if (x.symbol!.isWorking) {
@@ -360,7 +354,7 @@ class ByteCodeGenerationVisitor extends ast.Visitor
                 })
         }
 
-        copyBackUsings(usings: ast.Node[]): void
+        private copyBackUsings(usings: ast.Node[]): void
         {
                 usings.reverse().forEach(x => {
                         if (!(x instanceof ast.CallUsingId) || x.isByContent) {
