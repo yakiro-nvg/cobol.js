@@ -6,14 +6,22 @@ import { zip } from 'lodash'
 import * as ast from '../grammars/core.ast'
 
 function nodeTypeTag(
-        node: ast.Node, numberAs: 'COMP-2' | 'COMP-4'): string
+        node: ast.Node,
+        numberType: Comp2TypeSymbol | Comp4TypeSymbol,
+        displayType: DisplayTypeSymbol): string
 {
-        if (node instanceof ast.NumberLiteral) {
-                return numberAs
-        }
+        if (node instanceof ast.CallUsingLiteral) {
+                if (node.literal instanceof ast.NumberLiteral)
+                {
+                        node.type = numberType
+                        return numberType.tag
+                }
 
-        if (node instanceof ast.StringLiteral) {
-                return 'DISPLAY'
+                if (node.literal instanceof ast.StringLiteral)
+                {
+                        node.type = displayType
+                        return displayType.tag
+                }
         }
 
         if (node instanceof ast.CallUsingId || node instanceof ast.CallReturningId) {
@@ -111,12 +119,16 @@ class CheckProcedureTypeVisitor extends ast.Visitor
                                 this._chunk!.name, calleeChunk.name, node.location, callee.node.location)
                 }
 
-                node.usingTypes = zip(callee.usings, usings).map(x => {
+                const comp2Type = this._compiler.globalScope.resolveMember('COMP-2') as Comp2TypeSymbol
+                const comp4Type = this._compiler.globalScope.resolveMember('COMP-4') as Comp4TypeSymbol
+                const displayType = this._compiler.globalScope.resolveMember('DISPLAY') as DisplayTypeSymbol
+
+                zip(callee.usings, usings).forEach(x => {
                         const usage = x[0]!.usage
                         const using = x[1]!
                         switch (usage) {
                         case 'COMP-2': {
-                                const found = nodeTypeTag(using, 'COMP-2')
+                                const found = nodeTypeTag(using, comp2Type, displayType)
                                 if (found != 'COMP-2') {
                                         throw new BadArgumentTypeError(
                                                 this._chunk!.name, calleeChunk.name,
@@ -126,7 +138,7 @@ class CheckProcedureTypeVisitor extends ast.Visitor
                                 return this._compiler.globalScope.resolveMember('COMP-2') as Comp2TypeSymbol }
 
                         case 'COMP-4': {
-                                const found = nodeTypeTag(using, 'COMP-4')
+                                const found = nodeTypeTag(using, comp4Type, displayType)
                                 if (found != 'COMP-4') {
                                         throw new BadArgumentTypeError(
                                                 this._chunk!.name, calleeChunk.name,
@@ -136,7 +148,7 @@ class CheckProcedureTypeVisitor extends ast.Visitor
                                 return this._compiler.globalScope.resolveMember('COMP-4') as Comp4TypeSymbol }
 
                         case 'DISPLAY': {
-                                const found = nodeTypeTag(using, 'COMP-2')
+                                const found = nodeTypeTag(using, comp2Type, displayType)
                                 if (found != 'DISPLAY') {
                                         throw new BadArgumentTypeError(
                                                 this._chunk!.name, calleeChunk.name,
@@ -173,7 +185,7 @@ class CheckProcedureTypeVisitor extends ast.Visitor
 
                         switch (usage) {
                         case 'COMP-2': {
-                                const found = nodeTypeTag(returning, 'COMP-2')
+                                const found = returning.symbol!.type!.tag
                                 if (found != 'COMP-2') {
                                         throw new BadArgumentTypeError(
                                                 this._chunk!.name, calleeChunk.name,
@@ -183,7 +195,7 @@ class CheckProcedureTypeVisitor extends ast.Visitor
                                 break }
 
                         case 'COMP-4': {
-                                const found = nodeTypeTag(returning, 'COMP-4')
+                                const found = returning.symbol!.type!.tag
                                 if (found != 'COMP-4') {
                                         throw new BadArgumentTypeError(
                                                 this._chunk!.name, calleeChunk.name,
@@ -193,7 +205,7 @@ class CheckProcedureTypeVisitor extends ast.Visitor
                                 break }
 
                         case 'DISPLAY': {
-                                const found = nodeTypeTag(returning, 'COMP-2')
+                                const found = returning.symbol!.type!.tag
                                 if (found != 'DISPLAY') {
                                         throw new BadArgumentTypeError(
                                                 this._chunk!.name, calleeChunk.name,
@@ -230,7 +242,7 @@ export class StaticTypingPass implements CompilerPass
 {
         readonly name = 'StaticTypingPass'
         readonly isDeclare = false
-        readonly depends = [ 'ResolveProcedureSymbolPass' ]
+        readonly depends = <string[]> []
         readonly reversed_depends = <string[]> []
         readonly visitors = <ast.Visitor[]> []
         readonly transformers = <ast.Transformer[]> []

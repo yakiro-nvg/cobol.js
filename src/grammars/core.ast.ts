@@ -364,6 +364,18 @@ export class CallUsingId extends Node
         }
 }
 
+export class CallUsingLiteral extends Node
+{
+        type?: Type
+        literal: ValueLiteral
+
+        constructor(location: NodeLocation, literal: ValueLiteral)
+        {
+                super('CallUsingLiteral', location)
+                this.literal = literal
+        }
+}
+
 export class CallReturnings extends Node
 {
         constructor(location: NodeLocation)
@@ -387,7 +399,6 @@ export class CallReturningId extends Node
 export class CallStatement extends Statement
 {
         callee?: ProgramSymbol
-        usingTypes?: Type[]
 
         constructor(location: NodeLocation)
         {

@@ -362,7 +362,7 @@ CallUsingByContent
 
 CallUsingLiteral
         = literal:ValueLiteral {
-                return literal
+                return new ast.core.CallUsingLiteral(location(), literal)
         }
 
 CallUsingExplicitss

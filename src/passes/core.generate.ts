@@ -151,6 +151,35 @@ class LinkageField
         }
 }
 
+class ReverseCallUsingsTransformer extends ast.Transformer
+{
+        constructor(compiler: Compiler)
+        {
+                super()
+        }
+
+        transformCallUsings(node: ast.CallUsings): ast.CallUsings
+        {
+                node.children = node.children.reverse()
+                return node
+        }
+}
+
+export class ReverseCallUsingsPass implements CompilerPass
+{
+        readonly name = 'ReverseCallUsingsPass'
+        readonly isDeclare = false
+        readonly depends = [ 'StaticTypingPass' ]
+        readonly reversed_depends = [ 'ByteCodeGenerationPass' ]
+        readonly visitors = <ast.Visitor[]> []
+        readonly transformers = <ast.Transformer[]> []
+
+        constructor(compiler: Compiler)
+        {
+                this.transformers.push(new ReverseCallUsingsTransformer(compiler))
+        }
+}
+
 class ByteCodeGenerationVisitor extends ast.Visitor
 {
         private readonly _compiler: Compiler
@@ -182,11 +211,6 @@ class ByteCodeGenerationVisitor extends ast.Visitor
 
         visitProgram(node: ast.Program): void
         {
-                if (this._program) { // cleanup current
-                        this._asm!.emitA(Opcode.Return)
-                        this._asm!.prototypePop()
-                }
-
                 const name = node.first(ast.Identifier)!.name
                 const isExported = node.first(ast.Export)
                 const programIdx = this._asm!.prototypePush(isExported ? name : undefined)
@@ -194,6 +218,12 @@ class ByteCodeGenerationVisitor extends ast.Visitor
                 this._program = this._chunk!.resolve(name) as ProgramSymbol
                 this._workingStorageFields = []
                 this._linkageFields = []
+        }
+
+        visitPostProgram(node: ast.Program): void
+        {
+                this._asm!.emitA(Opcode.Return)
+                this._asm!.prototypePop()
         }
 
         visitField(node: ast.Field): void
@@ -279,67 +309,46 @@ class ByteCodeGenerationVisitor extends ast.Visitor
                 })
         }
 
-        visitProcedureDivision(node: ast.ProcedureDivision)
+        visitProcedureDivision(node: ast.ProcedureDivision): void
         {
                 this.genWorkingStorageFields()
                 this.genLinkageFields()
         }
 
-        visitCallStatement(node: ast.CallStatement)
+        visitCallStatement(node: ast.CallStatement): void
         {
                 const callId = node.first(ast.CallId)!
                 const callIdProgram = callId.first(ast.CallIdProgram)!
                 const callIdModule = callId.first(ast.CallIdModule)
 
-                // callable pushed first
+                // push callable
                 if (callIdModule) {
                         const imp = this._asm!.import(callIdModule.name, callIdProgram.name)
                         this._asm!.emitB(Opcode.Import, imp)
                 } else {
                         const idx = this._programIndices!.get(callIdProgram.name)!
-                        this._asm!.emitB(Opcode.ModuleValue, idx)
+                        this._asm!.emitB(Opcode.ChunkValue, idx)
                 }
+        }
 
-                const usings = node.first(ast.CallUsings)?.children || []
-                const returnings = node.first(ast.CallReturnings)?.where(ast.CallReturningId) || []
+        visitCallExpression(node: ast.CallExpression): void
+        {
+                const callId = node.first(ast.CallId)!
+                const callIdProgram = callId.first(ast.CallIdProgram)!
+                const callIdModule = callId.first(ast.CallIdModule)
 
-                // and arguments in reversed order
-                zip(usings, node.usingTypes!).reverse().forEach(x => {
-                        const using = x[0]!
-                        const type = x[1]!
-                        if (using instanceof ast.CallUsingId) {
-                                if (using.symbol!.isWorking) {
-                                        const f = this._workingStorageFields!.find(x => x.symbol.name == using.name)!
-                                        this._asm!.emitB(Opcode.Load, f.index)
-                                } else {
-                                        const f = this._linkageFields!.find(x => x.name == using.name)!
-                                        this._asm!.emitB(Opcode.Push, f.index!)
-                                }
-                        } else if (using instanceof ast.NumberLiteral) {
-                                try {
-                                        const c = type instanceof Comp2TypeSymbol
-                                                ? this._cpool!.getComp2(using)
-                                                : this._cpool!.getComp4(comp4FromLiteral(using))
-                                        this._asm!.emitB(Opcode.Load, c.index)
-                                } catch(e) {
-                                        if (e === 'too big') {
-                                                throw new ExceedComp4PrecisionError(
-                                                        this._chunk!.name, using.location)
-                                        } else {
-                                                throw e
-                                        }
-                                }
-                        } else if (using instanceof ast.StringLiteral) {
-                                const c = this._cpool!.getDisplay(using)
-                                this._asm!.emitB(Opcode.Load, c.index)
-                        } else {
-                                throw new Error('unexpected')
-                        }
-                })
+                // push callable
+                if (callIdModule) {
+                        const imp = this._asm!.import(callIdModule.name, callIdProgram.name)
+                        this._asm!.emitB(Opcode.Import, imp)
+                } else {
+                        const idx = this._programIndices!.get(callIdProgram.name)!
+                        this._asm!.emitB(Opcode.ChunkValue, idx)
+                }
+        }
 
-                this._asm!.emitC(Opcode.Call, usings.length, returnings.length)
-
-                // copy-back returnings
+        copyBackReturnings(returnings: ast.CallReturningId[]): void
+        {
                 returnings.forEach(x => {
                         if (x.symbol!.isWorking) {
                                 const f = this._workingStorageFields!.find(y => y.symbol.name == x.name)!
@@ -349,27 +358,84 @@ class ByteCodeGenerationVisitor extends ast.Visitor
                                 this._asm!.emitB(Opcode.Replace, f.index!)
                         }
                 })
+        }
 
-                // copy-back usings
-                usings.forEach(x => {
+        copyBackUsings(usings: ast.Node[]): void
+        {
+                usings.reverse().forEach(x => {
                         if (!(x instanceof ast.CallUsingId) || x.isByContent) {
-                                return // by content doesn't need copy-back
-                        }
-
-                        if (x.symbol!.isWorking) {
-                                const f = this._workingStorageFields!.find(y => y.symbol.name == x.name)!
-                                this._asm!.emitB(Opcode.Store, f.index)
+                                this._asm!.emitB(Opcode.Pop, 1)
                         } else {
-                                const f = this._linkageFields!.find(y => y.name == x.name)!
-                                this._asm!.emitB(Opcode.Replace, f.index!)
+                                if (x.symbol!.isWorking) {
+                                        const f = this._workingStorageFields!.find(y => y.symbol.name == x.name)!
+                                        this._asm!.emitB(Opcode.Store, f.index)
+                                } else {
+                                        const f = this._linkageFields!.find(y => y.name == x.name)!
+                                        this._asm!.emitB(Opcode.Replace, f.index!)
+                                }
                         }
                 })
+        }
 
-                // pop callable, stack now is balanced
+        visitPostCallStatement(node: ast.CallStatement): void
+        {
+                const usings = node.first(ast.CallUsings)?.children || []
+                const returnings = node.first(ast.CallReturnings)?.where(ast.CallReturningId) || []
+
+                this._asm!.emitC(Opcode.Call, usings.length, returnings.length)
+
+                this.copyBackReturnings(returnings)
+                this.copyBackUsings(usings)
+
                 this._asm!.emitB(Opcode.Pop, 1)
         }
 
-        visitGobackStatement(node: ast.GobackStatement)
+        visitPostCallExpression(node: ast.CallExpression): void
+        {
+                const usings = node.first(ast.CallUsings)?.children || []
+
+                this._asm!.emitC(Opcode.Call, usings.length, 1)
+
+                // replace callable by returning
+                this._asm!.emitB(Opcode.RelativeReplace, usings.length + 1)
+
+                this.copyBackUsings(usings)
+        }
+
+        visitCallUsingId(node: ast.CallUsingId): void
+        {
+                if (node.symbol!.isWorking) {
+                        const f = this._workingStorageFields!.find(x => x.symbol.name == node.name)!
+                        this._asm!.emitB(Opcode.Load, f.index)
+                } else {
+                        const f = this._linkageFields!.find(x => x.name == node.name)!
+                        this._asm!.emitB(Opcode.Push, f.index!)
+                }
+        }
+
+        visitCallUsingLiteral(node: ast.CallUsingLiteral): void
+        {
+                if (node.literal instanceof ast.NumberLiteral) {
+                        try {
+                                const c = node.type instanceof Comp2TypeSymbol
+                                        ? this._cpool!.getComp2(node.literal)
+                                        : this._cpool!.getComp4(comp4FromLiteral(node.literal))
+                                this._asm!.emitB(Opcode.Load, c.index)
+                        } catch(e) {
+                                if (e === 'too big') {
+                                        throw new ExceedComp4PrecisionError(
+                                                this._chunk!.name, node.location)
+                                } else {
+                                        throw e
+                                }
+                        }
+                } else if (node.literal instanceof ast.StringLiteral) {
+                        const c = this._cpool!.getDisplay(node.literal)
+                        this._asm!.emitB(Opcode.Load, c.index)
+                }
+        }
+
+        visitGobackStatement(node: ast.GobackStatement): void
         {
                 this._asm!.emitA(Opcode.Return)
         }

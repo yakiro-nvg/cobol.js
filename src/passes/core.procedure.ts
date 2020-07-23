@@ -126,7 +126,7 @@ export class ResolveProcedureSymbolPass implements CompilerPass
         readonly name = 'ResolveProcedureSymbolPass'
         readonly isDeclare = false
         readonly depends = [ 'ResolveDeclarationSymbolPass' ]
-        readonly reversed_depends = <string[]> []
+        readonly reversed_depends = [ 'StaticTypingPass' ]
         readonly visitors = <ast.Visitor[]> []
         readonly transformers = <ast.Transformer[]> []
 
