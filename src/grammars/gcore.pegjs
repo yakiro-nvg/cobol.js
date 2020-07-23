@@ -299,7 +299,7 @@ CallStatement
         }
 
 CallExpression
-        = CallToken _ id:CallId _ usings:CallUsings? {
+        = id:CallId '(' _ usings:CallExpressionUsings? _ ')' {
                 const children = [ id ]
 
                 if (usings) {
@@ -327,6 +327,12 @@ CallId
                 return cid
         }
 
+CallExpressionUsings
+        = byrefs:CallUsingImplicits? _ explicitss:CallUsingExplicitss? {
+                byrefs = byrefs ? byrefs : []
+                return explicitss ? explicitss.reduce((acc, x) => acc.concat(x), byrefs) : byrefs
+        }
+
 CallUsings
         = UsingToken _ byrefs:CallUsingImplicits? _ explicitss:CallUsingExplicitss? {
                 byrefs = byrefs ? byrefs : []
@@ -339,11 +345,10 @@ CallUsingImplicits
         }
 
 CallUsingImplicit
-        = CallUsingByRef
+        = CallExpression
+        / CallUsingByRef
         / CallUsingLiteral
-        / '(' _ exp:Expression _ ')' {
-                return exp
-        }
+
 
 CallUsingByRef
         = id:Identifier {
@@ -375,11 +380,9 @@ CallUsingExplicitByRefs
         }
 
 CallUsingExplicitByRef
-        = CallUsingByRef
+        = Expression
+        / CallUsingByRef
         / CallUsingLiteral
-        / '(' _ exp:Expression _ ')' {
-                return exp
-        }
 
 CallUsingExplicitByContents
         = ByToken _ ContentToken _ head:CallUsingExplicitByContent tail:(_ ','? _ CallUsingExplicitByContent)* {
@@ -387,11 +390,9 @@ CallUsingExplicitByContents
         }
 
 CallUsingExplicitByContent
-        = CallUsingByContent
+        = Expression
+        / CallUsingByContent
         / CallUsingLiteral
-        / '(' _ exp:Expression _ ')' {
-                return exp
-        }
 
 CallReturnings
         = ReturningToken _ head:CallReturning tail:(_ ','? _ CallReturning)* {
