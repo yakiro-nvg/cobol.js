@@ -239,8 +239,8 @@ class ByteCodeGenerationVisitor extends ast.Visitor
 
                                 switch (x.usage) {
                                 case 'COMP-2': {
-                                        const value = x.node.first(ast.NumberLiteral)!
-                                        index = this._asm!.wfieldComp2(parseFloat(value.value))
+                                        const value = x.node.first(ast.NumberLiteral)
+                                        index = this._asm!.wfieldComp2(parseFloat(value?.value || '0'))
                                         break }
 
                                 case 'COMP-4': {
@@ -249,8 +249,8 @@ class ByteCodeGenerationVisitor extends ast.Visitor
                                         break }
 
                                 case 'DISPLAY': {
-                                        const value = x.node.first(ast.StringLiteral)!
-                                        index = this._asm!.wfieldDisplay(value.value)
+                                        const value = x.node.first(ast.StringLiteral)
+                                        index = this._asm!.wfieldDisplay(value?.value)
                                         break }
                                 }
 
