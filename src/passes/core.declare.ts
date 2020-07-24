@@ -163,7 +163,7 @@ class DefineDeclareSymbolVisitor extends ast.Visitor
                                         : new FieldSymbol(name, this._isWorking!, usage, node, pic?.segments)
                                 this._program!.define(field)
                         } catch(e) {
-                                if (e === 'too big') {
+                                if (e === 'too big' || e === 'bad sig') {
                                         throw new BadDefaultValueError(
                                                 this._compiler.chunkName, value!.location)
                                 } else {

@@ -1,6 +1,5 @@
 import { Symbol, Type, Scope } from '../symbol'
 import * as ast from '../grammars/core.ast'
-import { Comp4 } from 'cam-js'
 
 export abstract class BaseScope implements Scope
 {
@@ -170,25 +169,33 @@ export class FieldSymbol implements Symbol
 
 export class Comp4FieldSymbol extends FieldSymbol
 {
-        readonly value?: Comp4
+        readonly isSigned: boolean
+        readonly scale: number
+        readonly value?: BigInt
 
         constructor(name: string, isWorking: boolean,
                 node: ast.Field, pic?: ast.PictureSegment[])
         {
                 super(name, isWorking, 'COMP-4', node, pic)
                 const value = node.first(ast.NumberLiteral)
-                if (!value) {
-                        return // done
-                }
 
                 if (pic) {
+                        this.isSigned = pic[0].char === 'S'
                         const picParts = pic.filter(x => x.char === '9')
-                        const scale = picParts.length === 2 ? picParts[1].size : 0
-                        const precision = picParts[0].size + scale
+                        this.scale = picParts.length === 2 ? picParts[1].size : 0
+                        if (!value) {
+                                return
+                        }
+
+                        const precision = picParts[0].size + this.scale
                         const parts = value.value.split('.')
 
+                        if (this.isSigned && value.value.startsWith('-')) {
+                                throw 'bad sig'
+                        }
+
                         if (parts.length === 2) {
-                                parts[1] = parts[1].substr(0, scale).padEnd(scale, '0')
+                                parts[1] = parts[1].substr(0, this.scale).padEnd(this.scale, '0')
                         }
 
                         const c4str = parts.join('')
@@ -197,18 +204,24 @@ export class Comp4FieldSymbol extends FieldSymbol
                                 throw 'too big'
                         }
 
-                        this.value = new Comp4(BigInt(parts.join('')), precision, scale)
+                        this.value = BigInt(parts.join(''))
                 } else {
+                        if (!value) {
+                                this.isSigned = true
+                                this.scale    = 0
+                                return
+                        }
+
+                        this.isSigned = value.value.startsWith('-')
                         const parts = value.value.split('.')
-                        const scale = parts.length === 2 ? parts[1].length : 0
-                        const precision = parts[0].length - (parts[0][0] === '-' ? 1 : 0) + scale
+                        this.scale = parts.length === 2 ? parts[1].length : 0
 
                         const c4str = parts.join('')
                         if (c4str.length > 18) {
                                 throw 'too big'
                         }
 
-                        this.value = new Comp4(BigInt(c4str), precision, scale)
+                        this.value = BigInt(c4str)
                 }
         }
 }

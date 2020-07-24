@@ -8,16 +8,16 @@ import { ExceedComp4PrecisionError } from '../errors'
 
 function comp4FromLiteral(literal: ast.NumberLiteral): Comp4
 {
+        const isSigned = literal.value.startsWith('-')
         const parts = literal.value.split('.')
         const scale = parts.length === 2 ? parts[1].length : 0
-        const precision = parts[0].length - (parts[0][0] === '-' ? 1 : 0) + scale
 
         const c4str = parts.join('')
         if (c4str.length > 18) {
                 throw 'too big'
         }
 
-        return new Comp4(BigInt(c4str), precision, scale)
+        return new Comp4(isSigned, scale, BigInt(c4str))
 }
 
 class Comp2Value
@@ -94,15 +94,14 @@ class ConstantPool
         {
                 let c = this._constants.find(
                         x => x.value instanceof Comp4Value &&
-                        x.value.value.value == value.value &&
-                        x.value.value.precision == value.precision &&
-                        x.value.value.scale == value.scale)
+                        x.value.value.isSigned == value.isSigned &&
+                        x.value.value.scale == value.scale &&
+                        x.value.value.value == value.value)
 
                 if (c) {
                         return c
                 } else {
-                        const idx = this._asm.wfieldComp4(
-                                value.precision, value.scale, value.value.toString())
+                        const idx = this._asm.wfieldComp4(value)
                         c = new Constant(idx, new Comp4Value(value))
                         this._constants.push(c)
                         return c
@@ -242,7 +241,8 @@ class ByteCodeGenerationVisitor extends ast.Visitor
                                 break
 
                         case 'COMP-4': {
-                                const c4v = (sym as Comp4FieldSymbol).value || new Comp4(BigInt(0), 1, 0)
+                                const c4s = sym as Comp4FieldSymbol
+                                const c4v = new Comp4(c4s.isSigned, c4s.scale, c4s.value || BigInt(0))
                                 f = new LinkageField(name, this._cpool!.getComp4(c4v))
                                 break }
 
@@ -265,26 +265,27 @@ class ByteCodeGenerationVisitor extends ast.Visitor
                         .map(x => x.first(ast.Identifier)!.name)
                         .map(x => this._program!.resolve(x) as FieldSymbol)
                         .map(x => {
-                                let index: number
+                                let idx: number
 
                                 switch (x.usage) {
                                 case 'COMP-2': {
                                         const value = x.node.first(ast.NumberLiteral)
-                                        index = this._asm!.wfieldComp2(parseFloat(value?.value || '0'))
+                                        idx = this._asm!.wfieldComp2(parseFloat(value?.value || '0'))
                                         break }
 
                                 case 'COMP-4': {
-                                        const value = (x as Comp4FieldSymbol).value || new Comp4(BigInt(0), 1, 0)
-                                        index = this._asm!.wfieldComp4(value.precision, value.scale, value.value.toString())
+                                        const c4s = x as Comp4FieldSymbol
+                                        const c4v = new Comp4(c4s.isSigned, c4s.scale, c4s.value || BigInt(0))
+                                        idx = this._asm!.wfieldComp4(c4v)
                                         break }
 
                                 case 'DISPLAY': {
                                         const value = x.node.first(ast.StringLiteral)
-                                        index = this._asm!.wfieldDisplay(value?.value)
+                                        idx = this._asm!.wfieldDisplay(value?.value)
                                         break }
                                 }
 
-                                return new WorkingStorageField(index, x)
+                                return new WorkingStorageField(idx, x)
                         }) || []
         }
 
