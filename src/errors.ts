@@ -53,13 +53,13 @@ export class BadLevelError extends CLIError
         }
 }
 
-export class Comp2WithPictureError extends CLIError
+export class UnexpectedPictureError extends CLIError
 {
-        constructor(chunkName: string, location: ast.NodeLocation)
+        constructor(chunkName: string, tag: string, location: ast.NodeLocation)
         {
                 const code = 'CBL0006'
                 const loc = location.start
-                super(`${chunkName}:${loc.line}:${loc.column} - COMP-2 can't have PIC clause`, { code })
+                super(`${chunkName}:${loc.line}:${loc.column} - '${tag}' can't have PIC clause`, { code })
         }
 }
 
@@ -170,3 +170,12 @@ export class ExpressionReturnNothingError extends CLIError
         }
 }
 
+export class UsingWithDefaultValueError extends CLIError
+{
+        constructor(chunkName: string, name: string, location: ast.NodeLocation)
+        {
+                const code = 'CBL0017'
+                const loc = location.start
+                super(`${chunkName}:${loc.line}:${loc.column} - using '${name}' can't have default value`, { code })
+        }
+}

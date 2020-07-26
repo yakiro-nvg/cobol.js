@@ -1,3 +1,4 @@
 = ParagraphStatement
 / CallStatement
+/ DisplayStatement
 / GobackStatement

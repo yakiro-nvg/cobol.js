@@ -1,47 +1,15 @@
 module System
 
-*> Formats a COMP-2 value.
-program-id Format-Comp-2 export
+*> Convert a value to string
+program-id To-String export
         data division
                 linkage section
-                *> A value to format
-                01 Val Comp-2
-                *> Formatted string
+                *> A value
+                01 Val Any
+                *> Converted string
                 01 Str Display
 
         procedure division using     Val
-                           returning Str
-end
-
-*> Formats a COMP-4 value.
-program-id Format-Comp-4 export
-        data division
-                linkage section
-                *> A value to format
-                01 Val Comp-4
-                *> Format pattern to use
-                01 Fmt Display
-                *> Formatted string
-                01 Str Display
-
-        procedure division using     Val
-                                     Fmt
-                           returning Str
-end
-
-*> Formats a Display value.
-program-id Format-Display export
-        data division
-                linkage section
-                *> A value to format
-                01 Val Display
-                *> Format pattern to use
-                01 Fmt Display
-                *> Formatted string
-                01 Str Display
-
-        procedure division using     Val
-                                     Fmt
                            returning Str
 end
 

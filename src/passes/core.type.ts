@@ -1,6 +1,6 @@
 import { CompilerPass, Compiler } from '../compiler'
 import { ModuleSymbol, ChunkSymbol, ProgramSymbol,
-         DisplayTypeSymbol, Comp2TypeSymbol, Comp4TypeSymbol } from '../symbols/core'
+         DisplayTypeSymbol, Comp2TypeSymbol, Comp4TypeSymbol, AnyTypeSymbol } from '../symbols/core'
 import { WrongNumArgumentsError, BadArgumentTypeError } from '../errors'
 import { zip } from 'lodash'
 import * as ast from '../grammars/core.ast'
@@ -119,9 +119,10 @@ class CheckProcedureTypeVisitor extends ast.Visitor
                                 this._chunk!.name, calleeChunk.name, node.location, callee.node.location)
                 }
 
-                const comp2Type = this._compiler.globalScope.resolveMember('COMP-2') as Comp2TypeSymbol
-                const comp4Type = this._compiler.globalScope.resolveMember('COMP-4') as Comp4TypeSymbol
+                const comp2Type   = this._compiler.globalScope.resolveMember('COMP-2')  as Comp2TypeSymbol
+                const comp4Type   = this._compiler.globalScope.resolveMember('COMP-4')  as Comp4TypeSymbol
                 const displayType = this._compiler.globalScope.resolveMember('DISPLAY') as DisplayTypeSymbol
+                const anyType     = this._compiler.globalScope.resolveMember('ANY')     as AnyTypeSymbol
 
                 zip(callee.usings, usings).forEach(x => {
                         const usage = x[0]!.usage
@@ -135,7 +136,7 @@ class CheckProcedureTypeVisitor extends ast.Visitor
                                                 'COMP-2', found, using.location, x[0]!.node.location)
                                 }
 
-                                return this._compiler.globalScope.resolveMember('COMP-2') as Comp2TypeSymbol }
+                                break }
 
                         case 'COMP-4': {
                                 const found = nodeTypeTag(using, comp4Type, displayType)
@@ -145,7 +146,7 @@ class CheckProcedureTypeVisitor extends ast.Visitor
                                                 'COMP-4', found, using.location, x[0]!.node.location)
                                 }
 
-                                return this._compiler.globalScope.resolveMember('COMP-4') as Comp4TypeSymbol }
+                                break }
 
                         case 'DISPLAY': {
                                 const found = nodeTypeTag(using, comp2Type, displayType)
@@ -155,7 +156,11 @@ class CheckProcedureTypeVisitor extends ast.Visitor
                                                 'DISPLAY', found, using.location, x[0]!.node.location)
                                 }
 
-                                return this._compiler.globalScope.resolveMember('DISPLAY') as DisplayTypeSymbol }
+                                break }
+
+                        case 'ANY':
+                                nodeTypeTag(using, comp2Type, displayType)
+                                break
                         }
                 })
         }

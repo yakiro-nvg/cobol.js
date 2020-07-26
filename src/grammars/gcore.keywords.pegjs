@@ -10,6 +10,8 @@
 / SectionToken
 / Comp2Token
 / Comp4Token
+/ DisplayToken
+/ AnyToken
 / UsingToken
 / ReturningToken
 / PicToken

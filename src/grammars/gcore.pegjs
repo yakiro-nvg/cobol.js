@@ -36,6 +36,7 @@ SectionToken        = 'section'i         !IdentifierPart
 Comp2Token          = 'comp-2'i          !IdentifierPart
 Comp4Token          = 'comp-4'i          !IdentifierPart
 DisplayToken        = 'display'i         !IdentifierPart
+AnyToken            = 'any'i             !IdentifierPart
 UsingToken          = 'using'i           !IdentifierPart
 ReturningToken      = 'returning'i       !IdentifierPart
 PicToken            = 'pic'i             !IdentifierPart
@@ -217,6 +218,7 @@ Usage
         = Comp2Token   { return new ast.core.Usage(location(), 'COMP-2')  }
         / Comp4Token   { return new ast.core.Usage(location(), 'COMP-4')  }
         / DisplayToken { return new ast.core.Usage(location(), 'DISPLAY') }
+        / AnyToken     { return new ast.core.Usage(location(), 'ANY')     }
 
 Value
         = ValueToken _ value:ValueLiteral {
@@ -345,7 +347,7 @@ CallUsingImplicits
         }
 
 CallUsingImplicit
-        = CallExpression
+        = Expression
         / CallUsingByRef
         / CallUsingLiteral
 
@@ -403,6 +405,29 @@ CallReturning
         = id:Identifier {
                 return new ast.core.CallReturningId(location(), id.name)
         }
+
+DisplayStatement
+        = DisplayToken _ args:DisplayArguments {
+                const d = new ast.core.DisplayStatement(location())
+                d.children = args
+                return d
+        }
+
+DisplayArguments
+        = head:DisplayArgument tail:(_ ','? _ DisplayArgument)* {
+                return buildList(head, tail, 3)
+        }
+
+DisplayArgument
+        = Expression
+        / DisplayArgumentId
+        / DisplayArgumentLiteral
+
+DisplayArgumentId
+        = Identifier
+
+DisplayArgumentLiteral
+        = ValueLiteral
 
 GobackStatement
         = GobackToken {

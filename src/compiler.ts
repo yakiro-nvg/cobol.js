@@ -7,6 +7,7 @@ import { join } from 'path'
 import * as _ from 'lodash'
 import * as glob from 'glob'
 import { Parser } from './parser'
+import { ast } from '.'
 
 export interface CompilerPass
 {
@@ -97,7 +98,7 @@ export class Compiler
                         .filter(x => x.isDeclare)
                         .forEach(x => {
                                 x.visitors.forEach(y => y.visit(root))
-                                x.transformers.reduce((acc, y) => y.transform(acc)!, root)
+                                x.transformers.reduce((acc, y) => <ast.Node> y.transform(acc), root)
                         })
         }
 
@@ -118,7 +119,7 @@ export class Compiler
                 const root = <Node> this._parser.parse(inputPath)
                 this._sorted_passes!.forEach(x => {
                         x.visitors.forEach(y => y.visit(root))
-                        x.transformers.reduce((acc, y) => y.transform(acc)!, root)
+                        x.transformers.reduce((acc, y) => <ast.Node> y.transform(acc), root)
                 })
         }
 }

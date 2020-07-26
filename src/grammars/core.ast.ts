@@ -63,9 +63,6 @@ export abstract class Visitor
                 } else {
                         this.genericVisitPost(node)
                 }
-
-                // touched everything
-                this.cleanup()
         }
 
         genericVisit(node: Node): void
@@ -77,18 +74,13 @@ export abstract class Visitor
         {
                 // nop
         }
-
-        cleanup(): void
-        {
-                // nop
-        }
 }
 
 export abstract class Transformer
 {
-        transform(node: Node): Node | undefined
+        transform(node: Node): Node | Node[] | undefined
         {
-                let ret: Node | undefined = node
+                let ret: Node | Node[] | undefined = node
 
                 // call transform function
                 const v: any = this
@@ -100,30 +92,26 @@ export abstract class Transformer
                 }
 
                 // recursive for each child
-                if (ret) {
+                if (ret instanceof Node) {
                         ret.children = ret.children
                                 .map(x => this.transform(x))
                                 .reduce<Node[]>((acc, x) => {
-                                        // remove undefined
-                                        if (x) { acc.push(x) }
+                                        if (x instanceof Node) {
+                                                acc.push(x)
+                                        } else if (Array.isArray(x)) {
+                                                x.forEach(y => acc.push(y))
+                                        }
+
                                         return acc
                                 }, [])
                 }
 
-                // touched everything
-                this.cleanup()
-
                 return ret
         }
 
-        genericTransform(node: Node): Node | undefined
+        genericTransform(node: Node): Node | Node[] | undefined
         {
                 return node
-        }
-
-        cleanup(): void
-        {
-                // nop
         }
 }
 
@@ -219,7 +207,7 @@ export class Level extends Node
         }
 }
 
-export type UsageType = 'COMP-2' | 'COMP-4' | 'DISPLAY'
+export type UsageType = 'COMP-2' | 'COMP-4' | 'DISPLAY' | 'ANY'
 
 export class Usage extends Node
 {
@@ -414,6 +402,14 @@ export class CallExpression extends Expression
         constructor(location: NodeLocation)
         {
                 super('CallExpression', location)
+        }
+}
+
+export class DisplayStatement extends Statement
+{
+        constructor(location: NodeLocation)
+        {
+                super('DisplayStatement', location)
         }
 }
 

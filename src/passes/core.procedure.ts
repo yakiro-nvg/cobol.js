@@ -5,6 +5,88 @@ import { UndefinedError, MutableArgumentRedefinitionError,
 import { toPairs, groupBy } from 'lodash'
 import * as ast from '../grammars/core.ast'
 
+class DisplayStatementTransformer extends ast.Transformer
+{
+        constructor(compiler: Compiler)
+        {
+                super()
+        }
+
+        transformDisplayStatement(node: ast.DisplayStatement): ast.Statement[]
+        {
+                return node.children.map(x => {
+                        const consoleWriteCall = new ast.CallStatement(x.location)
+                        const consoleWriteCallId = new ast.CallId(x.location)
+                        const consoleWriteCallUsings = new ast.CallUsings(x.location)
+
+                        consoleWriteCallId.children = [
+                                new ast.CallIdModule(x.location, 'SYSTEM'),
+                                new ast.CallIdProgram(x.location, 'CONSOLE-WRITE')
+                        ]
+
+                        if (x instanceof ast.Identifier) {
+                                const toStringExp = new ast.CallExpression(x.location)
+
+                                const toStringExpCallId = new ast.CallId(x.location)
+                                toStringExpCallId.children = [
+                                        new ast.CallIdModule(x.location, 'SYSTEM'),
+                                        new ast.CallIdProgram(x.location, 'TO-STRING')
+                                ]
+
+                                const toStringExpCallUsings = new ast.CallUsings(x.location)
+                                toStringExpCallUsings.children = [
+                                        new ast.CallUsingId(x.location, x.name, true)
+                                ]
+
+                                toStringExp.children = [ toStringExpCallId, toStringExpCallUsings ]
+
+                                consoleWriteCallUsings.children = [ toStringExp ]
+                        } else if (x instanceof ast.StringLiteral) {
+                                consoleWriteCallUsings.children = [
+                                        new ast.CallUsingLiteral(x.location, x)
+                                ]
+                        } else if (x instanceof ast.NumberLiteral) {
+                                const toStringExp = new ast.CallExpression(x.location)
+
+                                const toStringExpCallId = new ast.CallId(x.location)
+                                toStringExpCallId.children = [
+                                        new ast.CallIdModule(x.location, 'SYSTEM'),
+                                        new ast.CallIdProgram(x.location, 'TO-STRING')
+                                ]
+
+                                const toStringExpCallUsings = new ast.CallUsings(x.location)
+                                toStringExpCallUsings.children = [
+                                        new ast.CallUsingLiteral(x.location, x)
+                                ]
+
+                                toStringExp.children = [ toStringExpCallId, toStringExpCallUsings ]
+
+                                consoleWriteCallUsings.children = [ toStringExp ]
+                        } else {
+                                throw new Error('unexpected')
+                        }
+
+                        consoleWriteCall.children = [ consoleWriteCallId, consoleWriteCallUsings ]
+                        return consoleWriteCall
+                })
+        }
+}
+
+export class DisplayStatementPass implements CompilerPass
+{
+        readonly name = 'DisplayStatementPass'
+        readonly isDeclare = false
+        readonly depends = [ 'ResolveDeclarationSymbolPass' ]
+        readonly reversed_depends = [ 'ResolveProcedureSymbolPass' ]
+        readonly visitors = <ast.Visitor[]> []
+        readonly transformers = <ast.Transformer[]> []
+
+        constructor(compiler: Compiler)
+        {
+                this.transformers.push(new DisplayStatementTransformer(compiler))
+        }
+}
+
 class ResolveProcedureSymbolVisitor extends ast.Visitor
 {
         private readonly _compiler: Compiler

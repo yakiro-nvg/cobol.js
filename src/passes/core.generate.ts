@@ -1,8 +1,8 @@
 import { Compiler, CompilerPass } from '../compiler'
 import { ModuleSymbol, ChunkSymbol, ProgramSymbol,
-         FieldSymbol, Comp4FieldSymbol, Comp2TypeSymbol } from '../symbols/core'
+         FieldSymbol, Comp4FieldSymbol, Comp2TypeSymbol, AnyTypeSymbol } from '../symbols/core'
 import { Assembler, Comp4, Opcode } from 'cam-js'
-import { differenceBy, zip } from 'lodash'
+import { differenceBy } from 'lodash'
 import * as ast from '../grammars/core.ast'
 import { ExceedComp4PrecisionError } from '../errors'
 
@@ -140,10 +140,10 @@ class WorkingStorageField
 class LinkageField
 {
         readonly name: string
-        readonly value: Constant
+        readonly value?: Constant
         index?: number
 
-        constructor(name: string, value: Constant)
+        constructor(name: string, value?: Constant)
         {
                 this.name  = name
                 this.value = value
@@ -251,6 +251,10 @@ class ByteCodeGenerationVisitor extends ast.Visitor
                                         name, this._cpool!.getDisplay(
                                                 value ? (value as ast.StringLiteral) : undefined))
                                 break
+
+                        case 'ANY':
+                                f = new LinkageField(name, undefined)
+                                break
                         }
 
                         this._linkageFields!.push(f)
@@ -283,6 +287,9 @@ class ByteCodeGenerationVisitor extends ast.Visitor
                                         const value = x.node.first(ast.StringLiteral)
                                         idx = this._asm!.wfieldDisplay(value?.value)
                                         break }
+
+                                case 'ANY': {
+                                        throw new Error('not supported') }
                                 }
 
                                 return new WorkingStorageField(idx, x)
@@ -306,7 +313,7 @@ class ByteCodeGenerationVisitor extends ast.Visitor
                 let localIdx = 0
                 returnings.concat(locals).forEach(x => {
                         x.index = localIdx++
-                        this._asm!.emitB(Opcode.Load, x.value.index!)
+                        this._asm!.emitB(Opcode.Load, x.value!.index)
                 })
         }
 
@@ -412,7 +419,8 @@ class ByteCodeGenerationVisitor extends ast.Visitor
         {
                 if (node.literal instanceof ast.NumberLiteral) {
                         try {
-                                const c = node.type instanceof Comp2TypeSymbol
+                                const c = (node.type instanceof Comp2TypeSymbol ||
+                                           node.type instanceof AnyTypeSymbol)
                                         ? this._cpool!.getComp2(node.literal)
                                         : this._cpool!.getComp4(comp4FromLiteral(node.literal))
                                 this._asm!.emitB(Opcode.Load, c.index)
@@ -435,7 +443,7 @@ class ByteCodeGenerationVisitor extends ast.Visitor
                 this._asm!.emitA(Opcode.Return)
         }
 
-        cleanup(): void
+        visitPostModule(node: ast.Module): void
         {
                 this._asm!.serialize(this._compiler.outputPath)
         }

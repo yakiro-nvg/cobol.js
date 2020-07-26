@@ -3,7 +3,8 @@ import { ModuleSymbol, ChunkSymbol, ProgramSymbol,
          Comp4FieldSymbol, FieldSymbol, UsageSymbol } from '../symbols/core'
 import { RedefinitionError, UndefinedError, BadLevelError, BadSignPictureError,
          ManyVirtualDecimalPointError, BadDefaultValueError, IncompatibleComp4PictureError,
-         Comp2WithPictureError, NotInLinkageSectionError, ExceedComp4PrecisionError } from '../errors'
+         UnexpectedPictureError, NotInLinkageSectionError, ExceedComp4PrecisionError,
+         UsingWithDefaultValueError } from '../errors'
 import { tail, sumBy, groupBy, toPairs } from 'lodash'
 import * as ast from '../grammars/core.ast'
 
@@ -92,8 +93,8 @@ class DefineDeclareSymbolVisitor extends ast.Visitor
                 switch (usage) {
                 case 'COMP-2': {
                         if (pic) {
-                                throw new Comp2WithPictureError(
-                                        this._compiler.chunkName, pic.location)
+                                throw new UnexpectedPictureError(
+                                        this._compiler.chunkName, 'COMP-2', pic.location)
                         }
 
                         if (value && !(value instanceof ast.NumberLiteral)) {
@@ -149,6 +150,19 @@ class DefineDeclareSymbolVisitor extends ast.Visitor
                         }
 
                         break }
+
+                case 'ANY': {
+                        if (pic) {
+                                throw new UnexpectedPictureError(
+                                        this._compiler.chunkName, 'ANY', pic.location)
+                        }
+
+                        if (value) {
+                                throw new BadDefaultValueError(
+                                        this._compiler.chunkName, value.location)
+                        }
+
+                        break }
                 }
 
                 const previous = this._program!.resolveMember(name) as FieldSymbol
@@ -195,6 +209,12 @@ class DefineDeclareSymbolVisitor extends ast.Visitor
                                 if (field.isWorking) {
                                         throw new NotInLinkageSectionError(
                                                 this._compiler.chunkName, name, x.location)
+                                }
+
+                                const value = field.node.first(ast.ValueLiteral)
+                                if (value) {
+                                        throw new UsingWithDefaultValueError(
+                                                this._compiler.chunkName, name, value.location)
                                 }
 
                                 this._program!.usings.push(field)

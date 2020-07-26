@@ -71,6 +71,12 @@ export class DisplayTypeSymbol extends UsageSymbol
         readonly name = 'DISPLAY'
 }
 
+export class AnyTypeSymbol extends UsageSymbol
+{
+        readonly tag  = 'ANY'
+        readonly name = 'ANY'
+}
+
 export class GlobalScope extends SymbolTable
 {
         constructor()
@@ -80,6 +86,7 @@ export class GlobalScope extends SymbolTable
                 this.define(new Comp2TypeSymbol())
                 this.define(new Comp4TypeSymbol())
                 this.define(new DisplayTypeSymbol())
+                this.define(new AnyTypeSymbol())
         }
 }
 
@@ -204,7 +211,8 @@ export class Comp4FieldSymbol extends FieldSymbol
                                 throw 'too big'
                         }
 
-                        this.value = BigInt(parts.join(''))
+                        const vnodot = parts.join('')
+                        this.value = BigInt(vnodot)*BigInt(Math.pow(10, precision - vnodot.length))
                 } else {
                         if (!value) {
                                 this.isSigned = true
