@@ -62,6 +62,8 @@ class DisplayStatementTransformer extends ast.Transformer
                                 toStringExp.children = [ toStringExpCallId, toStringExpCallUsings ]
 
                                 consoleWriteCallUsings.children = [ toStringExp ]
+                        } else if (x instanceof ast.Expression) {
+                                consoleWriteCallUsings.children = [ x ]
                         } else {
                                 throw new Error('unexpected')
                         }
