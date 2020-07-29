@@ -4,7 +4,7 @@ import { ModuleSymbol, ChunkSymbol, ProgramSymbol,
 import { RedefinitionError, UndefinedError, BadLevelError, BadSignPictureError,
          ManyVirtualDecimalPointError, BadDefaultValueError, IncompatibleComp4PictureError,
          UnexpectedPictureError, NotInLinkageSectionError, ExceedComp4PrecisionError,
-         UsingWithDefaultValueError } from '../errors'
+         UsingWithDefaultValueError, EndNameNotMatchError } from '../errors'
 import { tail, sumBy, groupBy, toPairs } from 'lodash'
 import * as ast from '../grammars/core.ast'
 
@@ -39,12 +39,17 @@ class DefineDeclareSymbolVisitor extends ast.Visitor
 
         visitProgram(node: ast.Program): void
         {
-                const name = node.first(ast.Identifier)!.name
+                const names = node.where(ast.Identifier)
+                if (names.length > 1 && names[0].name !== names[1].name) {
+                        throw new EndNameNotMatchError(this._chunk!.name, names[1].name, names[0].name, names[1].location, names[0].location)
+                }
+
+                const name = names[0].name
+
                 const previous = this._chunk!.resolveMember(name) as ProgramSymbol
                 if (previous) {
                         throw new RedefinitionError(
-                                this._compiler.chunkName, this._compiler.chunkName,
-                                name, node.location, previous.node.location)
+                                this._chunk!.name, this._chunk!.name, name, node.location, previous.node.location)
                 }
 
                 const isExported = node.first(ast.Export)
@@ -75,7 +80,7 @@ class DefineDeclareSymbolVisitor extends ast.Visitor
                 const value = node.first(ast.ValueLiteral)
 
                 if (level?.level < 1 || level?.level > 77) {
-                        throw new BadLevelError(this._compiler.chunkName, level.location)
+                        throw new BadLevelError(this._chunk!.name, level.location)
                 }
 
                 if (pic) { // optimize segments (group nearby)
@@ -93,13 +98,11 @@ class DefineDeclareSymbolVisitor extends ast.Visitor
                 switch (usage) {
                 case 'COMP-2': {
                         if (pic) {
-                                throw new UnexpectedPictureError(
-                                        this._compiler.chunkName, 'COMP-2', pic.location)
+                                throw new UnexpectedPictureError(this._chunk!.name, 'COMP-2', pic.location)
                         }
 
                         if (value && !(value instanceof ast.NumberLiteral)) {
-                                throw new BadDefaultValueError(
-                                        this._compiler.chunkName, value.location)
+                                throw new BadDefaultValueError(this._chunk!.name, value.location)
                         }
 
                         break }
@@ -107,23 +110,19 @@ class DefineDeclareSymbolVisitor extends ast.Visitor
                 case 'COMP-4': {
                         if (pic) {
                                 if (sumBy(tail(pic!.segments), x => x.char === 'S' ? x.size : 0) > 0) {
-                                        throw new BadSignPictureError(
-                                                this._compiler.chunkName, pic!.location)
+                                        throw new BadSignPictureError(this._chunk!.name, pic!.location)
                                 }
 
                                 if (sumBy(pic!.segments, x => x.char === 'V' ? x.size : 0) > 1) {
-                                        throw new ManyVirtualDecimalPointError(
-                                                this._compiler.chunkName, pic!.location)
+                                        throw new ManyVirtualDecimalPointError(this._chunk!.name, pic!.location)
                                 }
 
                                 if (sumBy(pic!.segments, x => x.char === 'X' || x.char === 'A' ? x.size : 0) > 1) {
-                                        throw new IncompatibleComp4PictureError(
-                                                this._compiler.chunkName, pic!.location)
+                                        throw new IncompatibleComp4PictureError(this._chunk!.name, pic!.location)
                                 }
 
                                 if (sumBy(pic!.segments, x => x.char === '9' ? x.size : 0) > 18) {
-                                        throw new ExceedComp4PrecisionError(
-                                                this._compiler.chunkName, pic!.location)
+                                        throw new ExceedComp4PrecisionError(this._chunk!.name, pic!.location)
                                 }
                         }
 
@@ -132,12 +131,10 @@ class DefineDeclareSymbolVisitor extends ast.Visitor
                                         try {
                                                 BigInt(value.value.split('.').join(''))
                                         } catch {
-                                                throw new BadDefaultValueError(
-                                                        this._compiler.chunkName, value.location)
+                                                throw new BadDefaultValueError(this._chunk!.name, value.location)
                                         }
                                 } else {
-                                        throw new BadDefaultValueError(
-                                                this._compiler.chunkName, value.location)
+                                        throw new BadDefaultValueError(this._chunk!.name, value.location)
                                 }
                         }
 
@@ -145,21 +142,18 @@ class DefineDeclareSymbolVisitor extends ast.Visitor
 
                 case 'DISPLAY': {
                         if (value && !(value instanceof ast.StringLiteral)) {
-                                throw new BadDefaultValueError(
-                                        this._compiler.chunkName, value.location)
+                                throw new BadDefaultValueError(this._chunk!.name, value.location)
                         }
 
                         break }
 
                 case 'ANY': {
                         if (pic) {
-                                throw new UnexpectedPictureError(
-                                        this._compiler.chunkName, 'ANY', pic.location)
+                                throw new UnexpectedPictureError(this._chunk!.name, 'ANY', pic.location)
                         }
 
                         if (value) {
-                                throw new BadDefaultValueError(
-                                        this._compiler.chunkName, value.location)
+                                throw new BadDefaultValueError(this._chunk!.name, value.location)
                         }
 
                         break }
@@ -168,8 +162,7 @@ class DefineDeclareSymbolVisitor extends ast.Visitor
                 const previous = this._program!.resolveMember(name) as FieldSymbol
                 if (previous) {
                         throw new RedefinitionError(
-                                this._compiler.chunkName, this._compiler.chunkName,
-                                name, node.location, previous.node.location)
+                                this._chunk!.name, this._chunk!.name, name, node.location, previous.node.location)
                 } else {
                         try {
                                 const field = usage === 'COMP-4'
@@ -178,8 +171,7 @@ class DefineDeclareSymbolVisitor extends ast.Visitor
                                 this._program!.define(field)
                         } catch(e) {
                                 if (e === 'too big' || e === 'bad sig') {
-                                        throw new BadDefaultValueError(
-                                                this._compiler.chunkName, value!.location)
+                                        throw new BadDefaultValueError(this._chunk!.name, value!.location)
                                 } else {
                                         throw e
                                 }
@@ -194,7 +186,7 @@ class DefineDeclareSymbolVisitor extends ast.Visitor
                 toPairs(groupBy(usings.concat(returnings), x => x.name)).forEach(x => {
                         if (x[1].length > 1) {
                                 throw new RedefinitionError(
-                                        this._compiler.chunkName, this._compiler.chunkName, x[0],
+                                        this._chunk!.name, this._chunk!.name, x[0],
                                         x[1][1].location, x[1][0].location)
                         }
                 })
@@ -207,20 +199,17 @@ class DefineDeclareSymbolVisitor extends ast.Visitor
                         const field = this._program!.resolveMember(name) as FieldSymbol
                         if (field) {
                                 if (field.isWorking) {
-                                        throw new NotInLinkageSectionError(
-                                                this._compiler.chunkName, name, x.location)
+                                        throw new NotInLinkageSectionError(this._chunk!.name, name, x.location)
                                 }
 
                                 const value = field.node.first(ast.ValueLiteral)
                                 if (value) {
-                                        throw new UsingWithDefaultValueError(
-                                                this._compiler.chunkName, name, value.location)
+                                        throw new UsingWithDefaultValueError(this._chunk!.name, name, value.location)
                                 }
 
                                 this._program!.usings.push(field)
                         } else {
-                                throw new UndefinedError(
-                                        this._compiler.chunkName, name, x.location)
+                                throw new UndefinedError(this._chunk!.name, name, x.location)
                         }
                 })
         }
@@ -232,14 +221,12 @@ class DefineDeclareSymbolVisitor extends ast.Visitor
                         const field = this._program!.resolveMember(name) as FieldSymbol
                         if (field) {
                                 if (field.isWorking) {
-                                        throw new NotInLinkageSectionError(
-                                                this._compiler.chunkName, name, x.location)
+                                        throw new NotInLinkageSectionError(this._chunk!.name, name, x.location)
                                 }
 
                                 this._program!.returnings.push(field)
                         } else {
-                                throw new UndefinedError(
-                                        this._compiler.chunkName, name, x.location)
+                                throw new UndefinedError(this._chunk!.name, name, x.location)
                         }
                 })
         }

@@ -179,3 +179,15 @@ export class UsingWithDefaultValueError extends CLIError
                 super(`${chunkName}:${loc.line}:${loc.column} - using '${name}' can't have default value`, { code })
         }
 }
+
+export class EndNameNotMatchError extends CLIError
+{
+        constructor(
+                chunkName: string, name: string, expected: string, endLocation: ast.NodeLocation, startLocation: ast.NodeLocation)
+        {
+                const code = 'CBL0018'
+                super(`${chunkName}:${endLocation.start.line}:${endLocation.start.column} - END '${name}' not match, expected '${expected}'
+${chunkName}:${startLocation.start.line}:${startLocation.start.column} - start definition is here
+                `, { code })
+        }
+}

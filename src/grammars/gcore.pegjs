@@ -26,7 +26,6 @@ ReservedWord
 ModuleToken         = 'module'i          !IdentifierPart
 ProgramIdToken      = 'program-id'i      !IdentifierPart
 ExportToken         = 'export'i          !IdentifierPart
-EndToken            = 'end'i             !IdentifierPart
 DataToken           = 'data'i            !IdentifierPart
 ProcedureToken      = 'procedure'i       !IdentifierPart
 DivisionToken       = 'division'i        !IdentifierPart
@@ -46,9 +45,12 @@ ReferenceToken      = 'reference'i       !IdentifierPart
 ContentToken        = 'content'i         !IdentifierPart
 CallToken           = 'call'i            !IdentifierPart
 GobackToken         = 'goback'i          !IdentifierPart
+EndProgramToken     = 'end-program'i     !IdentifierPart
+EndCallToken        = 'end-call'i        !IdentifierPart
+EndDisplayToken     = 'end-display'i     !IdentifierPart
 
 Module
-        = _ ModuleToken _ name:Identifier _ programs:Programs _ {
+        = _ ModuleToken _ '.'? _ name:Identifier _ '.'? _ programs:Programs _ {
                 const m = new ast.core.Module(location())
                 m.children.push(name)
                 concatInplace(m.children, programs)
@@ -61,8 +63,12 @@ Programs
         }
 
 Program
-        = ProgramIdToken _ name:Identifier _ isExported:ExportToken? _ body:ProgramBody? _ EndToken {
+        = ProgramIdToken _ '.'? _ name:Identifier _ isExported:ExportToken? _ body:ProgramBody? _ EndProgramToken _ endName:Identifier? _ '.'? {
                 const children = [ name ]
+
+                if (endName) {
+                        children.push(endName)
+                }
 
                 if (isExported) {
                         children.push(new ast.core.Export(location()))
@@ -93,7 +99,7 @@ ProgramBody
         }
 
 DataDivision
-        = DataToken _ DivisionToken _ workingStorage:WorkingStorageSection? _ linkage:LinkageSection? {
+        = DataToken _ DivisionToken _ '.'? _ workingStorage:WorkingStorageSection? _ linkage:LinkageSection? {
                 const data = []
 
                 if (workingStorage) {
@@ -108,14 +114,14 @@ DataDivision
         }
 
 WorkingStorageSection
-        = WorkingStorageToken _ SectionToken _ fields:Fields {
+        = WorkingStorageToken _ SectionToken _ '.'? _ fields:Fields {
                 const w = new ast.core.WorkingStorageSection(location())
                 w.children = fields
                 return w
         }
 
 LinkageSection
-        = LinkageToken _ SectionToken _ fields:Fields {
+        = LinkageToken _ SectionToken _ '.'? _ fields:Fields {
                 const l = new ast.core.LinkageSection(location())
                 l.children = fields
                 return l
@@ -127,7 +133,7 @@ Fields
         }
 
 Field
-        = level:Level _ name:Identifier _ pic:Picture? _ usage:Usage? _ value:Value? {
+        = level:Level _ name:Identifier _ pic:Picture? _ usage:Usage? _ value:Value? _ '.'? {
                 const children = [ level, name ]
 
                 if (pic) {
@@ -234,7 +240,7 @@ ValueLiteral
         }
 
 ProcedureDivision
-        = ProcedureToken _ DivisionToken _ usings:ProcedureUsings? _
+        = ProcedureToken _ DivisionToken _ '.'? _ usings:ProcedureUsings? _
                 returnings:ProcedureReturnings? _ statements:Statements? {
                 const children = []
 
@@ -275,12 +281,12 @@ Statements
         }
 
 ParagraphStatement
-        = name:Identifier _ ':' {
+        = name:Identifier _ '.' {
                 return new ast.core.ParagraphStatement(location(), name)
         }
 
 CallStatement
-        = CallToken _ id:CallId _ usings:CallUsings? _ returnings:CallReturnings? {
+        = CallToken _ id:CallId _ usings:CallUsings? _ returnings:CallReturnings? _ ('.' / EndCallToken)? {
                 const children = [ id ]
 
                 if (usings) {
@@ -407,7 +413,7 @@ CallReturning
         }
 
 DisplayStatement
-        = DisplayToken _ args:DisplayArguments {
+        = DisplayToken _ args:DisplayArguments _ ('.' / EndDisplayToken)? {
                 const d = new ast.core.DisplayStatement(location())
                 d.children = args
                 return d
@@ -430,7 +436,7 @@ DisplayArgumentLiteral
         = ValueLiteral
 
 GobackStatement
-        = GobackToken {
+        = GobackToken _ '.'? {
                 return new ast.core.GobackStatement(location())
         }
 

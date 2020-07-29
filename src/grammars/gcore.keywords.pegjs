@@ -1,7 +1,6 @@
 = ModuleToken
 / ProgramIdToken
 / ExportToken
-/ EndToken
 / DataToken
 / ProcedureToken
 / DivisionToken
@@ -21,3 +20,6 @@
 / ContentToken
 / CallToken
 / GobackToken
+/ EndCallToken
+/ EndDisplayToken
+/ EndProgramToken

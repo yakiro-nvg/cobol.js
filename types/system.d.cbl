@@ -1,7 +1,7 @@
 module System
 
 *> Convert a value to string
-program-id To-String export
+program-id. To-String export
         data division
                 linkage section
                 *> A value
@@ -11,14 +11,14 @@ program-id To-String export
 
         procedure division using     Val
                            returning Str
-end
+end-program To-String
 
 *> Prints a string to output terminal.
-program-id Console-Write export
+program-id. Console-Write export
         data division
                 linkage section
                 *> A string to print-out
                 01 Msg Display
 
         procedure division using Msg
-end
+end-program Console-Write
